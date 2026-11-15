@@ -1,0 +1,363 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Modal } from "@/components/ui/modal";
+import { Button, EmptyState, ErrorBlock, Skeleton } from "@/components/ui/primitives";
+import { IconBox, IconCart, IconMoney, IconReceipt } from "@/components/ui/icons";
+import { useWaiterSalesDetail } from "@/lib/hooks/useDashboard";
+import { formatDateTime, formatDayLabel, formatMoney } from "@/lib/utils";
+import type { WaiterSaleEvent, WaiterSoldItem } from "@/lib/types";
+
+interface WaiterSalesModalProps {
+  waiter: { id: string; name: string } | null;
+  day?: string;
+  onClose: () => void;
+}
+
+type SortField = "date" | "itemName" | "quantity" | "totalAmount" | "revenueShare";
+
+function formatSaleTime(dateStr: string, hasSingleDay: boolean) {
+  if (hasSingleDay) {
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString("en-GB", {
+      timeZone: "Africa/Addis_Ababa",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }
+  return formatDateTime(dateStr);
+}
+
+export function WaiterSalesModal({ waiter, day, onClose }: WaiterSalesModalProps) {
+  const [viewMode, setViewMode] = useState<"sales" | "summary">("sales");
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortAsc, setSortAsc] = useState(false); // default: newest first
+
+  const { data, isLoading, isError, error, refetch } = useWaiterSalesDetail(
+    waiter?.id ?? null,
+    day,
+  );
+
+  const scopeLabel = day ? formatDayLabel(day) : "All time";
+
+  function toggleSort(field: SortField) {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      setSortAsc(field === "itemName");
+    }
+  }
+
+  // Sorted itemized sales list (by Date descending by default)
+  const sortedSales = useMemo(() => {
+    if (!data?.sales) return [];
+    const list = [...data.sales];
+    list.sort((a: WaiterSaleEvent, b: WaiterSaleEvent) => {
+      let cmp = 0;
+      if (sortField === "date") {
+        cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
+      } else if (sortField === "itemName") {
+        cmp = a.itemName.localeCompare(b.itemName);
+      } else if (sortField === "quantity") {
+        cmp = a.quantity - b.quantity;
+      } else if (sortField === "totalAmount") {
+        cmp = a.totalAmount - b.totalAmount;
+      } else if (sortField === "revenueShare") {
+        cmp = a.revenueShare - b.revenueShare;
+      }
+      return sortAsc ? cmp : -cmp;
+    });
+    return list;
+  }, [data?.sales, sortField, sortAsc]);
+
+  // Sorted beverage summary list
+  const sortedItems = useMemo(() => {
+    if (!data?.items) return [];
+    const list = [...data.items];
+    list.sort((a: WaiterSoldItem, b: WaiterSoldItem) => {
+      if (sortField === "itemName") {
+        return sortAsc ? a.itemName.localeCompare(b.itemName) : b.itemName.localeCompare(a.itemName);
+      }
+      if (sortField === "quantity") {
+        return sortAsc ? a.quantity - b.quantity : b.quantity - a.quantity;
+      }
+      // default: highest revenue first
+      return sortAsc ? a.totalAmount - b.totalAmount : b.totalAmount - a.totalAmount;
+    });
+    return list;
+  }, [data?.items, sortField, sortAsc]);
+
+  const sortIndicator = (field: SortField) => {
+    if (sortField !== field) return null;
+    return <span className="ml-1 text-[var(--brand)]">{sortAsc ? "↑" : "↓"}</span>;
+  };
+
+  return (
+    <Modal
+      open={!!waiter}
+      onClose={onClose}
+      title={waiter ? `Sales by ${waiter.name}` : "Waiter sales"}
+      description={`Itemized sales breakdown for ${scopeLabel}.`}
+      size="lg"
+      footer={
+        <Button variant="ghost" onClick={onClose}>
+          Close
+        </Button>
+      }
+    >
+      {isLoading ? (
+        <div className="space-y-4 py-2" aria-busy="true">
+          <div className="grid grid-cols-3 gap-3">
+            <Skeleton className="h-16 rounded-[var(--radius)]" />
+            <Skeleton className="h-16 rounded-[var(--radius)]" />
+            <Skeleton className="h-16 rounded-[var(--radius)]" />
+          </div>
+          <Skeleton className="h-8 w-44" />
+          <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] p-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        </div>
+      ) : isError ? (
+        <ErrorBlock message={error?.message ?? "Failed to load sales details"} onRetry={refetch} />
+      ) : !data || data.items.length === 0 ? (
+        <EmptyState
+          title={`No sales on ${scopeLabel}`}
+          description={`No orders were recorded for ${waiter?.name} on this date.`}
+          icon={<IconCart size={24} />}
+        />
+      ) : (
+        <div className="flex flex-col gap-4">
+          {/* Top summary metric cards */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-muted)] p-3">
+              <span className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
+                <IconMoney size={14} className="text-[var(--brand)]" />
+                Total Sales
+              </span>
+              <p className="mt-1 text-base font-semibold tabular-nums text-[var(--foreground)] sm:text-lg">
+                {formatMoney(data.totalSales)}
+              </p>
+            </div>
+            <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-muted)] p-3">
+              <span className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
+                <IconReceipt size={14} className="text-[var(--info)]" />
+                Orders
+              </span>
+              <p className="mt-1 text-base font-semibold tabular-nums text-[var(--foreground)] sm:text-lg">
+                {data.orderCount}
+              </p>
+            </div>
+            <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-muted)] p-3">
+              <span className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
+                <IconBox size={14} className="text-[var(--success)]" />
+                Units Sold
+              </span>
+              <p className="mt-1 text-base font-semibold tabular-nums text-[var(--foreground)] sm:text-lg">
+                {data.totalUnitsSold}
+              </p>
+            </div>
+          </div>
+
+          {/* View selector */}
+          <div className="flex items-center justify-between border-b border-[var(--border)] pb-2 text-sm">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode("sales");
+                  setSortField("date");
+                  setSortAsc(false);
+                }}
+                className={`rounded-[var(--radius-sm)] px-3 py-1.5 font-medium transition-colors ${viewMode === "sales"
+                    ? "bg-[var(--brand-tint)] text-[var(--brand-strong)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                  }`}
+              >
+                Sales by Date ({data.sales?.length ?? 0})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode("summary");
+                  setSortField("totalAmount");
+                  setSortAsc(false);
+                }}
+                className={`rounded-[var(--radius-sm)] px-3 py-1.5 font-medium transition-colors ${viewMode === "summary"
+                    ? "bg-[var(--brand-tint)] text-[var(--brand-strong)]"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                  }`}
+              >
+                Beverage Summary ({data.items.length})
+              </button>
+            </div>
+            <span className="text-xs text-[var(--muted-foreground)] hidden sm:inline">
+              Sorted by {sortField === "date" ? "date (newest)" : sortField}
+            </span>
+          </div>
+
+          {/* View 1: Itemized sales by date */}
+          {viewMode === "sales" ? (
+            <div className="overflow-hidden rounded-[var(--radius)] border border-[var(--border)]">
+              <div className="max-h-[52vh] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-[var(--border)] bg-[var(--surface-muted)] text-left text-xs font-semibold text-[var(--muted-foreground)]">
+                      <th
+                        scope="col"
+                        className="cursor-pointer select-none px-3.5 py-2.5 transition-colors hover:text-[var(--foreground)]"
+                        onClick={() => toggleSort("date")}
+                      >
+                        Date {sortIndicator("date")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="cursor-pointer select-none px-3.5 py-2.5 transition-colors hover:text-[var(--foreground)]"
+                        onClick={() => toggleSort("itemName")}
+                      >
+                        Beverage {sortIndicator("itemName")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="cursor-pointer select-none px-3.5 py-2.5 text-right transition-colors hover:text-[var(--foreground)]"
+                        onClick={() => toggleSort("quantity")}
+                      >
+                        Quantity {sortIndicator("quantity")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="cursor-pointer select-none px-3.5 py-2.5 text-right transition-colors hover:text-[var(--foreground)]"
+                        onClick={() => toggleSort("totalAmount")}
+                      >
+                        Total Revenue {sortIndicator("totalAmount")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="cursor-pointer select-none px-3.5 py-2.5 text-right transition-colors hover:text-[var(--foreground)]"
+                        onClick={() => toggleSort("revenueShare")}
+                      >
+                        Revenue Share {sortIndicator("revenueShare")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {sortedSales.map((sale) => (
+                      <tr key={sale.id} className="hover:bg-[var(--surface-muted)] transition-colors">
+                        <td className="whitespace-nowrap px-3.5 py-2.5 tabular-nums text-xs text-[var(--muted-foreground)]">
+                          {formatSaleTime(sale.date, !!day)}
+                        </td>
+                        <td className="px-3.5 py-2.5 font-medium text-[var(--foreground)]">
+                          {sale.itemName}
+                        </td>
+                        <td className="px-3.5 py-2.5 text-right tabular-nums font-semibold text-[var(--foreground)]">
+                          {sale.quantity}
+                        </td>
+                        <td className="px-3.5 py-2.5 text-right tabular-nums font-medium text-[var(--brand-strong)]">
+                          {formatMoney(sale.totalAmount)}
+                        </td>
+                        <td className="px-3.5 py-2.5 text-right tabular-nums text-xs text-[var(--muted-foreground)]">
+                          {sale.revenueShare}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="sticky bottom-0 z-10 border-t border-[var(--border)] bg-[var(--surface-muted)] font-semibold text-[var(--foreground)]">
+                    <tr>
+                      <td className="px-3.5 py-2.5" colSpan={2}>
+                        Total ({data.sales?.length ?? 0} sales)
+                      </td>
+                      <td className="px-3.5 py-2.5 text-right tabular-nums">
+                        {data.totalUnitsSold}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-right tabular-nums text-[var(--brand-strong)]">
+                        {formatMoney(data.totalSales)}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-right tabular-nums text-xs">
+                        100%
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          ) : (
+            /* View 2: Beverage summary (aggregated) */
+            <div className="overflow-hidden rounded-[var(--radius)] border border-[var(--border)]">
+              <div className="max-h-[52vh] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-[var(--border)] bg-[var(--surface-muted)] text-left text-xs font-semibold text-[var(--muted-foreground)]">
+                      <th
+                        scope="col"
+                        className="cursor-pointer select-none px-3.5 py-2.5 transition-colors hover:text-[var(--foreground)]"
+                        onClick={() => toggleSort("itemName")}
+                      >
+                        Beverage {sortIndicator("itemName")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="cursor-pointer select-none px-3.5 py-2.5 text-right transition-colors hover:text-[var(--foreground)]"
+                        onClick={() => toggleSort("quantity")}
+                      >
+                        Quantity {sortIndicator("quantity")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="cursor-pointer select-none px-3.5 py-2.5 text-right transition-colors hover:text-[var(--foreground)]"
+                        onClick={() => toggleSort("totalAmount")}
+                      >
+                        Total Revenue {sortIndicator("totalAmount")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="cursor-pointer select-none px-3.5 py-2.5 text-right transition-colors hover:text-[var(--foreground)]"
+                        onClick={() => toggleSort("revenueShare")}
+                      >
+                        Revenue Share {sortIndicator("revenueShare")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {sortedItems.map((item) => (
+                      <tr key={item.itemId} className="hover:bg-[var(--surface-muted)] transition-colors">
+                        <td className="px-3.5 py-2.5 font-medium text-[var(--foreground)]">
+                          {item.itemName}
+                        </td>
+                        <td className="px-3.5 py-2.5 text-right tabular-nums font-semibold text-[var(--foreground)]">
+                          {item.quantity}
+                        </td>
+                        <td className="px-3.5 py-2.5 text-right tabular-nums font-medium text-[var(--brand-strong)]">
+                          {formatMoney(item.totalAmount)}
+                        </td>
+                        <td className="px-3.5 py-2.5 text-right tabular-nums text-xs text-[var(--muted-foreground)]">
+                          {item.revenueShare}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="sticky bottom-0 z-10 border-t border-[var(--border)] bg-[var(--surface-muted)] font-semibold text-[var(--foreground)]">
+                    <tr>
+                      <td className="px-3.5 py-2.5">Total</td>
+                      <td className="px-3.5 py-2.5 text-right tabular-nums">
+                        {data.totalUnitsSold}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-right tabular-nums text-[var(--brand-strong)]">
+                        {formatMoney(data.totalSales)}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-right tabular-nums text-xs">
+                        100%
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}

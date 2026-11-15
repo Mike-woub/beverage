@@ -1,26 +1,124 @@
 @import "tailwindcss";
 
+/* ============================================================
+   Design tokens (CSS custom properties).
+   Per the fullstack-crud-flow skill, design tokens live here and
+   are preferred over hardcoded hex. Tailwind v4 arbitrary values
+   like bg-[var(--token)] work in this setup.
+   ============================================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces */
+  --background: #f6f7f9;
+  --surface: #ffffff;
+  --surface-muted: #f1f3f5;
+  --foreground: #0f172a;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  /* Brand */
+  --brand: #0e7490;
+  --brand-strong: #0b5566;
+  --brand-foreground: #ffffff;
+  --brand-tint: #e0f2fe;
+
+  /* Status */
+  --success: #16a34a;
+  --success-tint: #dcfce7;
+  --warning: #d97706;
+  --warning-tint: #fef3c7;
+  --danger: #dc2626;
+  --danger-tint: #fee2e2;
+  --info: #2563eb;
+  --info-tint: #dbeafe;
+
+  /* Radii / shadow */
+  --radius: 0.625rem;
+  --radius-sm: 0.375rem;
+  --radius-lg: 1rem;
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.06);
+  --shadow: 0 1px 3px 0 rgb(15 23 42 / 0.1), 0 1px 2px -1px rgb(15 23 42 / 0.1);
+  --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.12);
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-border: var(--border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* Thin, modern scrollbars */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes bev-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes bev-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bev-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.animate-bev-pulse {
+  animation: bev-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+

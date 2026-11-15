@@ -1,0 +1,233 @@
+// Beverage Inventory & Order Management — Phase 1 schema (LOCKED CONTRACT)
+// ID strategy: cuid() on every model (collision-resistant, URL-safe, good index locality).
+// Money: Decimal(12,2). Counts: Int.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  BARMAN // takes orders at the counter (POS)
+  WAITER // views their own order history only
+}
+
+enum MovementType {
+  ORDER_OUT // beverage sold from the counter
+  RECEIPT_IN // new stock received into the warehouse
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  TRANSFER_OUT // left the warehouse (to the counter)
+  TRANSFER_IN // arrived at the counter (from the warehouse)
+  VOID_IN // stock returned from a voided order
+}
+
+enum TransferStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Two-tier stock model:
+//  - Item.stock        = WAREHOUSE (admin-managed; receipts/adjustments land here)
+//  - Item.counterStock = COUNTER/BAR (what the barman sells from; orders deduct here)
+// Stock reaches the counter only via an admin-approved TransferRequest.
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         Role
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Orders this user is the WAITER for (order attributed to them).
+  orders         Order[]         @relation("OrderWaiter")
+  // Orders this user operated the terminal for ("placed on behalf of").
+  placedOrders   Order[]         @relation("OrderPlacedBy")
+  voidedOrders   Order[]         @relation("OrderVoidedBy")
+  stockReceipts  StockReceipt[]
+  stockMovements StockMovement[]
+  priceChanges   PriceHistory[]
+  transfersRequested TransferRequest[] @relation("TransferRequestedBy")
+  transfersDecided   TransferRequest[] @relation("TransferDecidedBy")
+}
+
+model Item {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  category  String   @default("Other")
+  // price must be >= 0: enforced in app (Zod) + DB CHECK.
+  price     Decimal  @db.Decimal(12, 2)
+  // WAREHOUSE stock (admin-managed). Receipts/adjustments change this; it is
+  // the source for transfers to the counter. must be >= 0 (DB CHECK).
+  stock     Int      @default(0)
+  // COUNTER/BAR stock — what the barman sells from; orders deduct from here.
+  // Replenished only by an admin-approved transfer. must be >= 0 (DB CHECK).
+  counterStock Int   @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems       OrderItem[]
+  stockReceipts    StockReceipt[]
+  stockMovements   StockMovement[]
+  priceHistory     PriceHistory[]
+  transferRequests TransferRequest[]
+
+  @@index([isActive])
+  @@index([category])
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  orderNumber String   @unique
+  // userId is the WAITER the order is attributed to (chosen by the barman).
+  userId      String
+  // placedById is the operator who submitted the order from the terminal
+  // (the logged-in barman or admin).
+  placedById  String?
+  totalAmount Decimal  @db.Decimal(12, 2)
+  isVoided    Boolean  @default(false)
+  voidReason  String?
+  voidedAt    DateTime?
+  voidedById  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user       User        @relation("OrderWaiter", fields: [userId], references: [id])
+  placedBy   User?       @relation("OrderPlacedBy", fields: [placedById], references: [id])
+  voidedBy   User?       @relation("OrderVoidedBy", fields: [voidedById], references: [id])
+  orderItems OrderItem[]
+
+  @@index([userId])
+  @@index([placedById])
+  @@index([createdAt])
+  @@index([isVoided])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  itemId    String
+  quantity  Int
+  // Historical price capture: unitPrice/subtotal are snapshotted at order time,
+  // never derived live from Item.price (preserves historical pricing per spec).
+  unitPrice Decimal  @db.Decimal(12, 2)
+  subtotal  Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+
+  order          Order           @relation(fields: [orderId], references: [id])
+  item           Item            @relation(fields: [itemId], references: [id])
+  stockMovements StockMovement[]
+
+  // Each beverage appears once per order.
+  @@unique([orderId, itemId])
+  // NOTE: @@index([orderId]) is mandated by acceptance criterion #3. It is
+  // technically redundant with @@unique([orderId, itemId]) — Postgres backs the
+  // composite unique with a btree index led by orderId, which already serves
+  // orderId-only lookups. It is kept deliberately (per the criterion), not by
+  // mistake; the extra write cost is negligible for this workload.
+  @@index([orderId])
+  @@index([itemId])
+}
+
+model StockReceipt {
+  id        String   @id @default(cuid())
+  itemId    String
+  userId    String
+  quantity  Int
+  unitCost  Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+
+  item           Item            @relation(fields: [itemId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  stockMovements StockMovement[]
+
+  @@index([itemId])
+  @@index([userId])
+}
+
+model StockMovement {
+  id             String       @id @default(cuid())
+  itemId         String
+  orderItemId    String?
+  stockReceiptId String?
+  userId         String
+  movementType   MovementType
+  quantity       Int
+  description    String?
+  createdAt      DateTime     @default(now())
+
+  item         Item          @relation(fields: [itemId], references: [id])
+  orderItem    OrderItem?    @relation(fields: [orderItemId], references: [id])
+  stockReceipt StockReceipt? @relation(fields: [stockReceiptId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+
+  // Duplicate-movement prevention (DB is the enforcement owner):
+  //  - one ORDER_OUT and one ORDER_CANCEL_IN allowed per order item, no more.
+  //  - one RECEIPT_IN allowed per receipt, no more.
+  //  - NULLs are distinct in Postgres composite unique indexes, so adjustment
+  //    movements (both FKs NULL) are intentionally unconstrained.
+  @@unique([orderItemId, movementType])
+  @@unique([stockReceiptId, movementType])
+  @@index([itemId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([movementType])
+}
+
+model InventorySetting {
+  // Singleton: enforced by a fixed primary key value ("singleton") written by seed;
+  // the app always reads/writes id = "singleton".
+  id                String   @id @default("singleton")
+  lowStockThreshold Int      @default(10)
+  updatedAt         DateTime @updatedAt
+}
+
+// Audit trail of selling-price changes (Item.price). Written inside the item
+// update transaction whenever the price actually changes. ADMIN-only, since
+// only admins may change selling price. Immutable by convention.
+model PriceHistory {
+  id        String   @id @default(cuid())
+  itemId    String
+  oldPrice  Decimal  @db.Decimal(12, 2)
+  newPrice  Decimal  @db.Decimal(12, 2)
+  changedBy String
+  createdAt DateTime @default(now())
+
+  item          Item @relation(fields: [itemId], references: [id])
+  changedByUser User @relation(fields: [changedBy], references: [id])
+
+  @@index([itemId])
+  @@index([createdAt])
+}
+
+// A barman's request to move stock from the warehouse to the counter. An admin
+// approves (performs the atomic warehouse->counter move + TRANSFER movements) or
+// rejects. Only APPROVED requests change stock.
+model TransferRequest {
+  id           String         @id @default(cuid())
+  itemId       String
+  quantity     Int
+  status       TransferStatus @default(PENDING)
+  requestedBy  String // barman (or admin) who asked
+  decidedBy    String? // admin who approved/rejected
+  note         String?
+  createdAt    DateTime       @default(now())
+  decidedAt    DateTime?
+
+  item            Item @relation(fields: [itemId], references: [id])
+  requestedByUser User @relation("TransferRequestedBy", fields: [requestedBy], references: [id])
+  decidedByUser   User? @relation("TransferDecidedBy", fields: [decidedBy], references: [id])
+
+  @@index([status])
+  @@index([itemId])
+  @@index([createdAt])
+}

@@ -1,0 +1,29 @@
+import type { Role } from "@prisma/client";
+import type { DefaultSession } from "next-auth";
+
+/**
+ * Augment NextAuth types with our custom session/JWT fields (id, username, role).
+ */
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      username: string;
+      role: Role;
+    } & DefaultSession["user"];
+  }
+
+  interface User {
+    id: string;
+    username: string;
+    role: Role;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    username: string;
+    role: Role;
+  }
+}
