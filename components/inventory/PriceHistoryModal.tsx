@@ -31,7 +31,7 @@ export function PriceHistoryModal({
     >
       {isLoading ? (
         <div className="space-y-3 py-2" aria-busy="true">
-          <Skeleton className="h-10 w-full rounded-[var(--radius)]" />
+          <Skeleton className="h-10 w-full rounded-xl" />
           <div className="space-y-2 pt-2">
             <Skeleton className="h-5 w-full" />
             <Skeleton className="h-5 w-full" />
@@ -45,26 +45,28 @@ export function PriceHistoryModal({
         />
       ) : (
         <div className="flex flex-col gap-2">
-          <div className="mb-1 flex items-center justify-between rounded-[var(--radius)] bg-[var(--brand-tint)] px-3 py-2 text-sm">
-            <span className="text-[var(--brand-strong)]">Current price</span>
-            <span className="font-semibold tabular-nums text-[var(--brand-strong)]">
+          <div className="mb-2 flex items-center justify-between rounded-xl border border-teal-200/80 bg-teal-50/70 px-3.5 py-2.5 text-sm">
+            <span className="font-medium text-teal-900">Current selling price</span>
+            <span className="font-bold tabular-nums text-teal-800">
               {item ? formatMoney(item.price) : ""}
             </span>
           </div>
-          <ul className="flex flex-col divide-y divide-[var(--border)]">
+          <ul className="flex flex-col divide-y divide-slate-100">
             {history.map((h) => (
-              <li key={h.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+              <li key={h.id} className="flex items-center justify-between gap-3 py-3 text-sm">
                 <div className="min-w-0">
-                  <p className="text-[var(--foreground)]">
-                    <span className="tabular-nums text-[var(--muted-foreground)] line-through">
+                  <p className="text-slate-900">
+                    <span className="tabular-nums text-slate-400 line-through">
                       {formatMoney(h.oldPrice)}
                     </span>
-                    {"  →  "}
-                    <span className="font-medium tabular-nums">{formatMoney(h.newPrice)}</span>
+                    <span className="text-slate-300 mx-1.5">→</span>
+                    <span className="font-semibold text-slate-900 tabular-nums">{formatMoney(h.newPrice)}</span>
                   </p>
-                  <p className="text-xs text-[var(--muted-foreground)]">by {h.changedBy}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    by <span className="font-medium text-slate-700">{h.changedBy}</span>
+                  </p>
                 </div>
-                <span className="shrink-0 text-xs text-[var(--muted-foreground)]">
+                <span className="shrink-0 text-xs text-slate-400 tabular-nums">
                   {formatDateTime(h.createdAt)}
                 </span>
               </li>

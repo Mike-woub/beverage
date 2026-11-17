@@ -5,7 +5,11 @@ import { STOCK_STATUS_LABEL } from "@/lib/utils";
 export function StockStatusBadge({ status }: { status: StockStatus }) {
   const tone =
     status === "IN_STOCK" ? "success" : status === "LOW_STOCK" ? "warning" : "danger";
-  return <Badge tone={tone}>{STOCK_STATUS_LABEL[status]}</Badge>;
+  return (
+    <Badge tone={tone} dot>
+      {STOCK_STATUS_LABEL[status]}
+    </Badge>
+  );
 }
 
 export function RoleBadge({ role }: { role: Role }) {
@@ -15,7 +19,11 @@ export function RoleBadge({ role }: { role: Role }) {
     WAITER: { tone: "neutral" as const, label: "Waiter" },
   };
   const { tone, label } = map[role];
-  return <Badge tone={tone}>{label}</Badge>;
+  return (
+    <Badge tone={tone} dot>
+      {label}
+    </Badge>
+  );
 }
 
 const MOVEMENT_META: Record<
@@ -38,7 +46,11 @@ export function TransferStatusBadge({ status }: { status: "PENDING" | "APPROVED"
     REJECTED: { tone: "danger" as const, label: "Rejected" },
   };
   const { tone, label } = map[status];
-  return <Badge tone={tone}>{label}</Badge>;
+  return (
+    <Badge tone={tone} dot>
+      {label}
+    </Badge>
+  );
 }
 
 export function MovementBadge({ type }: { type: MovementType }) {
@@ -51,5 +63,9 @@ export function movementSign(type: MovementType): string {
 }
 
 export function ActiveBadge({ active }: { active: boolean }) {
-  return <Badge tone={active ? "success" : "neutral"}>{active ? "Active" : "Inactive"}</Badge>;
+  return (
+    <Badge tone={active ? "success" : "neutral"} dot>
+      {active ? "Active" : "Inactive"}
+    </Badge>
+  );
 }

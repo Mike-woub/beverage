@@ -12,7 +12,6 @@ import {
   Card,
   EmptyState,
   ErrorBlock,
-  Select,
   TableSkeleton,
 } from "@/components/ui/primitives";
 import { StockStatusBadge } from "@/components/shared/status";
@@ -20,9 +19,8 @@ import { IconBox, IconMovements } from "@/components/ui/icons";
 import { formatMoney, stockStatus } from "@/lib/utils";
 
 /**
- * Counter Storage — what the barman sells from. Shows counter levels (and the
- * warehouse level for context) and lets the barman request a pull from the
- * warehouse, which an admin approves.
+ * Counter Storage — what the barman sells from.
+ * Shows counter stock levels vs warehouse reserve and lets staff request stock transfers.
  */
 export default function CounterPage() {
   const { user } = useSession();
@@ -50,10 +48,10 @@ export default function CounterPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Counter Storage"
-        description="Stock available at the counter for ordering. Request a stock transfer when low."
+        description="Active inventory ready at the counter bar for immediate ordering. Request a transfer from the back warehouse when low."
         action={
           <Button onClick={() => requestFor(undefined)}>
             <IconMovements size={16} />
@@ -62,13 +60,19 @@ export default function CounterPage() {
         }
       />
 
-      <Card>
-        <div className="flex flex-col gap-3 border-b border-[var(--border)] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <SearchInput value={search} onChange={setSearch} placeholder="Search beverages…" />
-          <p className="text-xs text-[var(--muted-foreground)]">
-            Counter stock status uses the low-stock threshold:{" "}
-            <span className="font-medium text-[var(--foreground)]">{threshold}</span>
-          </p>
+      <Card className="overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-[var(--border)] bg-slate-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search counter beverages…"
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">Counter low-stock threshold:</span>
+            <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-bold text-slate-800 tabular-nums">
+              {threshold} units
+            </span>
+          </div>
         </div>
 
         {isLoading ? (
@@ -77,9 +81,9 @@ export default function CounterPage() {
           <ErrorBlock message={error?.message ?? "Failed to load"} onRetry={refetch} />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title={search ? "No matching beverages" : "No beverages"}
+            title={search ? "No matching beverages" : "No beverages in counter stock"}
             description={search ? `No drinks match "${search}".` : "No beverages found in inventory."}
-            icon={<IconBox size={22} />}
+            icon={<IconBox size={24} />}
             action={
               search ? (
                 <Button variant="outline" size="sm" onClick={() => setSearch("")}>
@@ -92,22 +96,22 @@ export default function CounterPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--border)] text-left text-xs font-semibold text-[var(--muted-foreground)]">
+                <tr className="border-b border-[var(--border)] bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   <th scope="col" className="px-4 py-3">Beverage</th>
                   <th scope="col" className="px-4 py-3">Price</th>
-                  <th scope="col" className="px-4 py-3">Counter</th>
-                  <th scope="col" className="px-4 py-3">Warehouse</th>
-                  <th scope="col" className="px-4 py-3">Counter status</th>
+                  <th scope="col" className="px-4 py-3 text-right">Counter Stock</th>
+                  <th scope="col" className="px-4 py-3 text-right">Warehouse Reserve</th>
+                  <th scope="col" className="px-4 py-3">Counter Status</th>
                   <th scope="col" className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
                 {filtered.map((item) => (
-                  <tr key={item.id} className="transition-colors hover:bg-[var(--surface-muted)]">
-                    <td className="px-4 py-3 font-medium text-[var(--foreground)]">{item.name}</td>
-                    <td className="px-4 py-3 tabular-nums">{formatMoney(item.price)}</td>
-                    <td className="px-4 py-3 tabular-nums font-semibold">{item.counterStock}</td>
-                    <td className="px-4 py-3 tabular-nums text-[var(--muted-foreground)]">{item.stock}</td>
+                  <tr key={item.id} className="transition-colors hover:bg-slate-50/60">
+                    <td className="px-4 py-3 font-semibold text-slate-900">{item.name}</td>
+                    <td className="px-4 py-3 tabular-nums font-medium text-slate-700">{formatMoney(item.price)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums font-bold text-slate-900">{item.counterStock}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-500 font-medium">{item.stock}</td>
                     <td className="px-4 py-3">
                       <StockStatusBadge
                         status={stockStatus({ ...item, stock: item.counterStock }, threshold)}
@@ -120,7 +124,7 @@ export default function CounterPage() {
                         onClick={() => requestFor(item.id)}
                         aria-label={`Request stock transfer for ${item.name}`}
                       >
-                        Request
+                        Request pull
                       </Button>
                     </td>
                   </tr>
@@ -132,8 +136,8 @@ export default function CounterPage() {
       </Card>
 
       {!isAdmin && (
-        <p className="mt-3 text-xs text-[var(--muted-foreground)]">
-          Stock transfer requests are approved by an administrator before stock reaches the counter.
+        <p className="text-xs text-slate-500">
+          Stock transfer requests must be approved by an administrator before stock is moved to the counter.
         </p>
       )}
 

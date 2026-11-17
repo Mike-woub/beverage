@@ -14,8 +14,8 @@ import {
   GridSkeleton,
   Select,
 } from "@/components/ui/primitives";
-import { IconCart, IconCheck, IconMinus, IconPlus, IconTrash } from "@/components/ui/icons";
-import { cn, formatMoney, isAvailable } from "@/lib/utils";
+import { IconCart, IconCheck, IconMinus, IconPlus, IconReceipt, IconTrash } from "@/components/ui/icons";
+import { cn, formatMoney, initials, isAvailable } from "@/lib/utils";
 import type { Item, Order } from "@/lib/types";
 
 interface Line {
@@ -124,72 +124,78 @@ export default function NewOrderPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
-        title="New Order"
-        description="Select waiter, tap beverages, and place orders quickly."
+        title="Point of Sale (POS)"
+        description="Select server, tap beverages to assemble the ticket, and place orders with 1-click."
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-        {/* Beverage catalogue */}
-        <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_390px] xl:grid-cols-[1fr_420px] items-start">
+        {/* Left Column: Beverage Catalogue & Filters */}
+        <div className="flex flex-col gap-3.5">
+          {/* Search Bar */}
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex-1">
-              <SearchInput
-                value={search}
-                onChange={setSearch}
-                placeholder="Search beverages…"
-              />
-            </div>
-          </div>
-
-          {/* Category Filter Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setSelectedCategory(cat)}
-                className={cn(
-                  "whitespace-nowrap rounded-full px-3 py-1.5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
-                  selectedCategory === cat
-                    ? "bg-[var(--brand)] text-[var(--brand-foreground)] font-semibold shadow-sm"
-                    : "bg-[var(--surface-muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)] hover:text-[var(--foreground)]",
-                )}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {isLoading ? (
-            <GridSkeleton count={6} />
-          ) : visible.length === 0 ? (
-            <EmptyState
-              title={search ? "No beverages found" : "No beverages in this category"}
-              description={
-                search
-                  ? `No drinks match "${search}".`
-                  : "Try selecting another category or clear search."
-              }
-              icon={<IconCart size={22} />}
-              action={
-                search || selectedCategory !== "All" ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSearch("");
-                      setSelectedCategory("All");
-                    }}
-                  >
-                    Reset filters
-                  </Button>
-                ) : undefined
-              }
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search beverages by name…"
+              className="sm:max-w-md w-full"
             />
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-none">
+            {categories.map((cat) => {
+              const isSelected = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat)}
+                  className={cn(
+                    "whitespace-nowrap rounded-lg px-3.5 py-2 font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] active:scale-95",
+                    isSelected
+                      ? "bg-[var(--brand)] text-white shadow-xs"
+                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-xs",
+                  )}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Beverage Tiles Grid */}
+          {isLoading ? (
+            <GridSkeleton count={9} />
+          ) : visible.length === 0 ? (
+            <Card>
+              <EmptyState
+                title={search ? "No beverages found" : "No beverages in this category"}
+                description={
+                  search
+                    ? `No drinks match "${search}".`
+                    : "Try selecting another category or reset search."
+                }
+                icon={<IconCart size={24} />}
+                action={
+                  search || selectedCategory !== "All" ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSearch("");
+                        setSelectedCategory("All");
+                      }}
+                    >
+                      Reset filters
+                    </Button>
+                  ) : undefined
+                }
+              />
+            </Card>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-3">
               {visible.map((item) => {
                 const available = isAvailable(item);
                 const inCart = cart[item.id]?.quantity ?? 0;
@@ -201,37 +207,54 @@ export default function NewOrderPage() {
                     onClick={() => addToCart(item)}
                     aria-label={`Add ${item.name} (${formatMoney(item.price)}, ${item.counterStock} available)`}
                     className={cn(
-                      "group flex flex-col items-start gap-2 rounded-[var(--radius-lg)] border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] active:scale-[0.98]",
+                      "group relative flex min-h-[110px] flex-col justify-between rounded-xl border p-3.5 text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] active:scale-[0.98]",
                       available
                         ? inCart > 0
-                          ? "border-[var(--brand)] bg-[var(--surface)] ring-1 ring-[var(--brand)] shadow-[var(--shadow-sm)]"
-                          : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--brand)] hover:shadow-[var(--shadow-md)]"
-                        : "cursor-not-allowed border-[var(--border)] bg-[var(--surface-muted)] opacity-60",
+                          ? "border-[var(--brand)] bg-teal-50/20 ring-1 ring-[var(--brand)] shadow-sm"
+                          : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
+                        : "cursor-not-allowed border-slate-200 bg-slate-50 opacity-55",
                     )}
                   >
+                    {/* Top Row: Name & In-Cart Badge */}
                     <div className="flex w-full items-start justify-between gap-2">
-                      <span className="font-medium text-balance text-[var(--foreground)] leading-tight">
+                      <span className="font-bold text-slate-900 leading-snug line-clamp-2 text-sm sm:text-base">
                         {item.name}
                       </span>
                       {inCart > 0 && (
-                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-xs font-bold tabular-nums text-[var(--brand-foreground)]">
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-xs font-bold tabular-nums text-white shadow-xs">
                           {inCart}
                         </span>
                       )}
                     </div>
-                    <span className="text-sm font-semibold tabular-nums text-[var(--brand-strong)]">
-                      {formatMoney(item.price)}
-                    </span>
-                    <div className="flex w-full items-center justify-between text-xs text-[var(--muted-foreground)]">
+
+                    {/* Middle Row: Price */}
+                    <div className="mt-1">
+                      <span className="text-base font-bold tabular-nums text-slate-900">
+                        {formatMoney(item.price)}
+                      </span>
+                    </div>
+
+                    {/* Bottom Row: Stock Status & Category */}
+                    <div className="mt-2 flex w-full items-center justify-between gap-1 text-xs">
                       {available ? (
-                        <span className="tabular-nums">{item.counterStock} available</span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold tabular-nums",
+                            item.counterStock <= 5
+                              ? "bg-amber-50 text-amber-800 border border-amber-200"
+                              : "bg-emerald-50 text-emerald-800 border border-emerald-200",
+                          )}
+                        >
+                          {item.counterStock} at bar
+                        </span>
                       ) : (
-                        <span className="font-medium text-[var(--danger)]">
+                        <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-800 border border-rose-200">
                           {item.isActive ? "Out of stock" : "Unavailable"}
                         </span>
                       )}
+
                       {item.category && item.category !== "Other" && (
-                        <span className="text-[10px] text-[var(--muted-foreground)] opacity-70">
+                        <span className="text-[11px] font-medium text-slate-400 truncate max-w-[80px]">
                           {item.category}
                         </span>
                       )}
@@ -243,18 +266,18 @@ export default function NewOrderPage() {
           )}
         </div>
 
-        {/* Order summary sidebar */}
+        {/* Right Column: Persistent Order Ticket */}
         <div className="lg:sticky lg:top-6 lg:self-start">
-          <Card className="flex flex-col">
-            {/* Quick Waiter Selection Bar */}
-            <div className="border-b border-[var(--border)] p-3">
+          <Card className="overflow-hidden shadow-md">
+            {/* Waiter Selection Section */}
+            <div className="border-b border-[var(--border)] bg-slate-50/50 p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-[var(--foreground)] uppercase tracking-wider">
-                  Select Waiter
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Assign Waiter
                 </span>
                 {needsWaiter && (
-                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                    * Required
+                  <span className="text-xs font-semibold text-amber-700">
+                    * Required to order
                   </span>
                 )}
               </div>
@@ -266,10 +289,10 @@ export default function NewOrderPage() {
                     type="button"
                     onClick={() => setWaiterId("")}
                     className={cn(
-                      "rounded-full px-3 py-1 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
+                      "rounded-lg px-3 py-1.5 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] active:scale-95",
                       !waiterId
-                        ? "bg-[var(--brand)] text-[var(--brand-foreground)] font-semibold shadow-sm"
-                        : "bg-[var(--surface-muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)]",
+                        ? "bg-[var(--brand)] text-white shadow-xs"
+                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100",
                     )}
                   >
                     Me ({user?.username})
@@ -285,25 +308,32 @@ export default function NewOrderPage() {
                         type="button"
                         onClick={() => setWaiterId(w.id)}
                         className={cn(
-                          "rounded-full px-3 py-1 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
+                          "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] active:scale-95",
                           isSelected
-                            ? "bg-[var(--brand)] text-[var(--brand-foreground)] font-semibold shadow-sm scale-105"
-                            : "bg-[var(--surface-muted)] text-[var(--muted-foreground)] hover:bg-[var(--border)] hover:text-[var(--foreground)]",
+                            ? "bg-[var(--brand)] text-white shadow-xs"
+                            : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100",
                         )}
                       >
+                        <span
+                          className={cn(
+                            "flex size-4 items-center justify-center rounded-full text-[9px] font-bold",
+                            isSelected ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700",
+                          )}
+                        >
+                          {initials(w.username)}
+                        </span>
                         {w.username}
                       </button>
                     );
                   })}
               </div>
 
-              {/* Fallback dropdown if many waiters */}
-              {waiters && waiters.length > 5 && (
-                <div className="mt-2">
+              {/* Fallback dropdown if > 6 waiters */}
+              {waiters && waiters.length > 6 && (
+                <div className="mt-2.5">
                   <Select
                     value={waiterId}
                     onChange={(e) => setWaiterId(e.target.value)}
-                    className="h-8 text-xs"
                     aria-label="Select waiter from dropdown"
                   >
                     {isBarman ? (
@@ -323,87 +353,93 @@ export default function NewOrderPage() {
               )}
             </div>
 
-            {/* Recent order flash alert */}
+            {/* Recent Order Chit Alert */}
             {lastPlaced && lines.length === 0 && (
-              <div className="flex items-center justify-between border-b border-[var(--border)] bg-green-50/60 p-3 text-xs text-green-800 dark:bg-green-950/30 dark:text-green-300">
-                <div className="flex items-center gap-1.5">
-                  <IconCheck size={16} className="text-green-600 shrink-0" />
+              <div className="flex items-center justify-between border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">
+                <div className="flex items-center gap-2">
+                  <span className="flex size-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                    <IconCheck size={14} />
+                  </span>
                   <span>
-                    Last order: <strong>{lastPlaced.waiterName}</strong> ·{" "}
+                    Order placed for <strong>{lastPlaced.waiterName}</strong> ·{" "}
                     <strong>{formatMoney(lastPlaced.totalAmount)}</strong>
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="font-medium underline hover:text-green-900 ml-2 shrink-0"
+                  className="font-bold underline hover:text-emerald-950 ml-2 shrink-0"
                 >
                   Print Chit
                 </button>
               </div>
             )}
 
-            {/* Cart Header */}
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2.5">
+            {/* Ticket Header */}
+            <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3 bg-white">
               <div className="flex items-center gap-2">
-                <IconCart size={16} />
-                <h2 className="font-semibold text-sm text-[var(--foreground)]">Current Order</h2>
+                <IconReceipt size={17} className="text-slate-500" />
+                <h2 className="font-bold text-sm text-slate-900">Active Ticket</h2>
               </div>
               {itemCount > 0 && (
-                <span className="text-xs font-semibold tabular-nums text-[var(--brand)]">
-                  {itemCount} unit{itemCount === 1 ? "" : "s"}
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-slate-700 border border-slate-200">
+                  {itemCount} item{itemCount === 1 ? "" : "s"}
                 </span>
               )}
             </div>
 
-            {/* Cart Items List */}
+            {/* Ticket Line Items */}
             {lines.length === 0 ? (
               <EmptyState
-                title="Cart is empty"
-                description="Tap drinks on the left to add."
+                title="Ticket is empty"
+                description="Tap any beverage tile on the left to add it to this order."
                 icon={<IconCart size={22} />}
               />
             ) : (
-              <div className="max-h-[48vh] divide-y divide-[var(--border)] overflow-y-auto">
+              <div className="max-h-[46vh] divide-y divide-slate-100 overflow-y-auto px-1">
                 {lines.map((l) => (
-                  <div key={l.item.id} className="flex items-center gap-2 px-3.5 py-2.5">
+                  <div key={l.item.id} className="flex items-center gap-2 px-3 py-3 hover:bg-slate-50/50">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-[var(--foreground)]">
+                      <p className="truncate text-sm font-semibold text-slate-900">
                         {l.item.name}
                       </p>
-                      <p className="text-xs tabular-nums text-[var(--muted-foreground)]">
+                      <p className="text-xs tabular-nums text-slate-500">
                         {formatMoney(l.item.price)} each
                       </p>
                     </div>
-                    <div className="flex items-center gap-1">
+
+                    {/* Stepper Buttons (Tablet touch friendly) */}
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => setQty(l.item.id, l.quantity - 1)}
-                        className="flex size-7 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                        className="flex size-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-100 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
                         aria-label={`Decrease ${l.item.name} quantity`}
                       >
                         <IconMinus size={13} />
                       </button>
-                      <span className="w-6 text-center text-sm font-bold tabular-nums">
+                      <span className="w-6 text-center text-sm font-bold tabular-nums text-slate-900">
                         {l.quantity}
                       </span>
                       <button
                         type="button"
                         onClick={() => setQty(l.item.id, l.quantity + 1)}
                         disabled={l.quantity >= l.item.counterStock}
-                        className="flex size-7 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--surface-muted)] disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                        className="flex size-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-100 active:scale-95 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
                         aria-label={`Increase ${l.item.name} quantity`}
                       >
                         <IconPlus size={13} />
                       </button>
                     </div>
-                    <span className="w-16 text-right text-sm font-semibold tabular-nums text-[var(--foreground)]">
+
+                    <span className="w-16 text-right text-sm font-bold tabular-nums text-slate-900">
                       {formatMoney(l.item.price * l.quantity)}
                     </span>
+
                     <button
                       type="button"
                       onClick={() => removeLine(l.item.id)}
-                      className="p-1 text-[var(--muted-foreground)] transition-colors hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)]"
+                      className="p-1 text-slate-400 transition-colors hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
                       aria-label={`Remove ${l.item.name}`}
                     >
                       <IconTrash size={15} />
@@ -414,17 +450,17 @@ export default function NewOrderPage() {
             )}
 
             {/* Total and 1-Click Submit Button */}
-            <div className="border-t border-[var(--border)] p-4 bg-[var(--surface-muted)]/50">
-              <div className="mb-3 flex items-center justify-between">
+            <div className="border-t border-[var(--border)] p-4 bg-slate-50/70">
+              <div className="mb-3.5 flex items-center justify-between">
                 <div>
-                  <span className="text-xs text-[var(--muted-foreground)]">Order for</span>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">
+                  <span className="text-xs text-slate-500">Waiter</span>
+                  <p className="text-sm font-bold text-slate-900">
                     {selectedWaiterName}
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs text-[var(--muted-foreground)]">Total Amount</span>
-                  <p className="text-xl font-bold tabular-nums text-[var(--brand-strong)]">
+                  <span className="text-xs text-slate-500">Total Amount</span>
+                  <p className="text-2xl font-bold tabular-nums text-slate-900">
                     {formatMoney(total)}
                   </p>
                 </div>
@@ -432,7 +468,7 @@ export default function NewOrderPage() {
 
               {/* 1-Tap Direct Submit */}
               <Button
-                className="w-full text-base font-semibold shadow-md"
+                className="w-full text-base font-bold shadow-sm h-12 rounded-xl"
                 size="lg"
                 disabled={!canSubmit}
                 loading={createOrder.isPending}
@@ -449,7 +485,7 @@ export default function NewOrderPage() {
                 <button
                   type="button"
                   onClick={() => setCart({})}
-                  className="mt-2.5 w-full text-center text-xs text-[var(--muted-foreground)] hover:text-[var(--danger)] transition-colors"
+                  className="mt-2.5 w-full text-center text-xs font-medium text-slate-400 hover:text-rose-600 transition-colors"
                 >
                   Clear cart
                 </button>

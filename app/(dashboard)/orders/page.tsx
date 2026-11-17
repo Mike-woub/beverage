@@ -13,7 +13,7 @@ import {
   TableSkeleton,
 } from "@/components/ui/primitives";
 import { IconReceipt } from "@/components/ui/icons";
-import { cn, formatDate, formatDateTime, formatMoney } from "@/lib/utils";
+import { cn, formatDateTime, formatMoney, initials } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
 
@@ -53,23 +53,30 @@ export default function OrdersPage() {
   const pageItems = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
   return (
-    <div>
-      <PageHeader title="Orders" description="All completed orders across the team." />
+    <div className="space-y-6">
+      <PageHeader
+        title="Orders"
+        description="Comprehensive audit of all orders placed across the team."
+      />
 
-      <Card>
-        <div className="flex flex-col gap-3 border-b border-[var(--border)] p-4 lg:flex-row lg:items-center lg:justify-between">
+      <Card className="overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-[var(--border)] bg-slate-50/50 p-4 lg:flex-row lg:items-center lg:justify-between">
           <SearchInput
             value={search}
             onChange={(v) => { setSearch(v); setPage(1); }}
             placeholder="Search by beverage, waiter…"
+            className="sm:max-w-xs"
           />
-          <input
-            type="date"
-            value={dateFilter}
-            onChange={(e) => { setDateFilter(e.target.value); setPage(1); }}
-            aria-label="Filter by date"
-            className="h-10 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-tint)] sm:w-44"
-          />
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500">Filter Date:</span>
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => { setDateFilter(e.target.value); setPage(1); }}
+              aria-label="Filter by date"
+              className="h-9 rounded-lg border border-[var(--border-strong)] bg-white px-3 text-xs font-medium text-slate-900 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-border)] sm:w-44"
+            />
+          </div>
         </div>
 
         {isLoading ? (
@@ -80,7 +87,7 @@ export default function OrdersPage() {
           <EmptyState
             title="No orders found"
             description={search || dateFilter ? "Try adjusting the filters." : "Orders will appear here once placed."}
-            icon={<IconReceipt size={22} />}
+            icon={<IconReceipt size={24} />}
             action={
               search || dateFilter ? (
                 <Button
@@ -101,13 +108,13 @@ export default function OrdersPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[var(--border)] text-left text-xs font-semibold text-[var(--muted-foreground)]">
+                  <tr className="border-b border-[var(--border)] bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                     <th scope="col" className="px-4 py-3">Beverages Ordered</th>
                     <th scope="col" className="px-4 py-3">Waiter</th>
                     <th scope="col" className="px-4 py-3">Date</th>
-                    <th scope="col" className="px-4 py-3">Items</th>
-                    <th scope="col" className="px-4 py-3">Total</th>
-                    <th scope="col" className="px-4 py-3 text-right">Actions</th>
+                    <th scope="col" className="px-4 py-3 text-right">Items</th>
+                    <th scope="col" className="px-4 py-3 text-right">Total</th>
+                    <th scope="col" className="px-4 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -115,27 +122,38 @@ export default function OrdersPage() {
                     <tr
                       key={o.id}
                       className={cn(
-                        "transition-colors hover:bg-[var(--surface-muted)]",
-                        o.isVoided && "bg-red-50/40 dark:bg-red-950/20 opacity-75",
+                        "transition-colors hover:bg-slate-50/60",
+                        o.isVoided && "bg-rose-50/40 opacity-75",
                       )}
                     >
-                      <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+                      <td className="px-4 py-3 font-semibold text-slate-900">
                         <div className="flex items-center gap-2">
-                          <span>{o.itemsSummary || o.orderNumber}</span>
+                          <span className="truncate max-w-xs sm:max-w-md">
+                            {(o as { itemsSummary?: string }).itemsSummary || o.orderNumber}
+                          </span>
                           {o.isVoided && (
-                            <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-950/60 dark:text-red-400">
+                            <span className="inline-flex items-center rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-800">
                               VOIDED
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{o.waiterName}</td>
-                      <td className="px-4 py-3 tabular-nums text-[var(--muted-foreground)]" title={formatDateTime(o.createdAt)}>
-                        {formatDate(o.createdAt)}
+                      <td className="px-4 py-3 text-slate-700">
+                        <div className="flex items-center gap-2">
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-700">
+                            {initials(o.waiterName)}
+                          </span>
+                          <span className="font-medium text-xs text-slate-900">{o.waiterName}</span>
+                        </div>
                       </td>
-                      <td className="px-4 py-3 tabular-nums">{o.itemCount}</td>
-                      <td className="px-4 py-3 font-semibold tabular-nums text-[var(--foreground)]">
-                        <span className={o.isVoided ? "line-through text-[var(--muted-foreground)]" : undefined}>
+                      <td className="px-4 py-3 tabular-nums text-xs text-slate-500">
+                        {formatDateTime(o.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-xs font-semibold text-slate-600">
+                        {o.itemCount} unit{o.itemCount === 1 ? "" : "s"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold tabular-nums text-slate-900">
+                        <span className={cn(o.isVoided && "line-through text-slate-400 font-normal")}>
                           {formatMoney(o.totalAmount)}
                         </span>
                       </td>
@@ -144,9 +162,9 @@ export default function OrdersPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => setDetailId(o.id)}
-                          aria-label={`View order for ${o.waiterName}`}
+                          aria-label={`View order ${o.orderNumber}`}
                         >
-                          View
+                          View chit
                         </Button>
                       </td>
                     </tr>
@@ -154,7 +172,13 @@ export default function OrdersPage() {
                 </tbody>
               </table>
             </div>
-            <Pagination page={current} totalPages={totalPages} total={filtered.length} onPage={setPage} />
+
+            <Pagination
+              page={current}
+              totalPages={totalPages}
+              total={filtered.length}
+              onPage={setPage}
+            />
           </>
         )}
       </Card>

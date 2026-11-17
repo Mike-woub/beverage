@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/primitives";
 import { ActiveBadge, RoleBadge } from "@/components/shared/status";
 import { IconEdit, IconPlus, IconUsers } from "@/components/ui/icons";
-import { formatDate } from "@/lib/utils";
+import { formatDate, initials } from "@/lib/utils";
 import type { Role, User } from "@/lib/types";
 
 export default function UsersPage() {
@@ -60,10 +60,10 @@ export default function UsersPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
-        title="Users"
-        description="Manage accounts, roles, and access."
+        title="User Management"
+        description="Administer staff accounts, role-based access control, and credentials."
         action={
           <Button onClick={openAdd}>
             <IconPlus size={16} />
@@ -72,29 +72,37 @@ export default function UsersPage() {
         }
       />
 
-      <Card>
-        <div className="flex flex-col gap-3 border-b border-[var(--border)] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <SearchInput value={search} onChange={setSearch} placeholder="Search username…" />
-          <Select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as Role | "ALL")}
-            className="sm:w-44"
-            aria-label="Filter by role"
-          >
-            <option value="ALL">All roles</option>
-            <option value="ADMIN">Admin</option>
-            <option value="BARMAN">Barman</option>
-            <option value="WAITER">Waiter</option>
-          </Select>
+      <Card className="overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-[var(--border)] bg-slate-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search by username…"
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500">Filter Role:</span>
+            <div className="w-40">
+              <Select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value as Role | "ALL")}
+                aria-label="Filter by role"
+              >
+                <option value="ALL">All roles</option>
+                <option value="ADMIN">Admin</option>
+                <option value="BARMAN">Barman</option>
+                <option value="WAITER">Waiter</option>
+              </Select>
+            </div>
+          </div>
         </div>
 
         {isLoading ? (
           <TableSkeleton cols={5} rows={6} />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title="No users found"
+            title="No staff users found"
             description={search || roleFilter !== "ALL" ? "Try adjusting the filters." : "Users will appear here once added."}
-            icon={<IconUsers size={22} />}
+            icon={<IconUsers size={24} />}
             action={
               search || roleFilter !== "ALL" ? (
                 <Button
@@ -114,11 +122,11 @@ export default function UsersPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--border)] text-left text-xs font-semibold text-[var(--muted-foreground)]">
-                  <th scope="col" className="px-4 py-3">Username</th>
-                  <th scope="col" className="px-4 py-3">Role</th>
+                <tr className="border-b border-[var(--border)] bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <th scope="col" className="px-4 py-3">Staff Member</th>
+                  <th scope="col" className="px-4 py-3">Role &amp; Permissions</th>
                   <th scope="col" className="px-4 py-3">Status</th>
-                  <th scope="col" className="px-4 py-3">Created</th>
+                  <th scope="col" className="px-4 py-3">Created Date</th>
                   <th scope="col" className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -126,14 +134,27 @@ export default function UsersPage() {
                 {filtered.map((u) => {
                   const isSelf = u.id === me?.id;
                   return (
-                    <tr key={u.id} className="transition-colors hover:bg-[var(--surface-muted)]">
-                      <td className="px-4 py-3 font-medium text-[var(--foreground)]">
-                        {u.username}
-                        {isSelf && <span className="ml-2 text-xs text-[var(--muted-foreground)]">(you)</span>}
+                    <tr key={u.id} className="transition-colors hover:bg-slate-50/60">
+                      <td className="px-4 py-3 font-semibold text-slate-900">
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700">
+                            {initials(u.username)}
+                          </span>
+                          <div>
+                            <span className="font-semibold text-slate-900">{u.username}</span>
+                            {isSelf && (
+                              <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 border border-slate-200">
+                                You
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
                       <td className="px-4 py-3"><ActiveBadge active={u.isActive} /></td>
-                      <td className="px-4 py-3 tabular-nums text-[var(--muted-foreground)]">{formatDate(u.createdAt)}</td>
+                      <td className="px-4 py-3 tabular-nums text-xs text-slate-500 font-medium">
+                        {formatDate(u.createdAt)}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => openEdit(u)}>
@@ -167,12 +188,12 @@ export default function UsersPage() {
         onConfirm={confirmToggle}
         loading={setActive.isPending}
         tone={toggleTarget?.isActive ? "danger" : "primary"}
-        title={toggleTarget?.isActive ? "Deactivate user" : "Activate user"}
+        title={toggleTarget?.isActive ? "Deactivate User" : "Activate User"}
         confirmLabel={toggleTarget?.isActive ? "Deactivate" : "Activate"}
         message={
           toggleTarget?.isActive
-            ? `"${toggleTarget?.username}" will no longer be able to sign in.`
-            : `"${toggleTarget?.username}" will be able to sign in again.`
+            ? `"${toggleTarget?.username}" will no longer be able to sign in or be attributed orders.`
+            : `"${toggleTarget?.username}" will be restored and able to sign in again.`
         }
       />
     </div>

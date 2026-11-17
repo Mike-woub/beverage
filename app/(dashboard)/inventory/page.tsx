@@ -90,12 +90,12 @@ export default function InventoryPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Warehouse Inventory"
         description={
           isAdmin
-            ? "Manage warehouse beverages, selling prices, and stock status."
+            ? "Manage warehouse beverages, selling prices, and reserve stock levels."
             : "View beverages and current warehouse stock levels."
         }
         action={
@@ -108,23 +108,30 @@ export default function InventoryPage() {
         }
       />
 
-      <Card>
-        <div className="flex flex-col gap-3 border-b border-[var(--border)] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search beverages…" />
-          <p className="text-xs text-[var(--muted-foreground)]">
-            Low-stock threshold: <span className="font-medium text-[var(--foreground)]">{threshold}</span>
-          </p>
+      <Card className="overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-[var(--border)] bg-slate-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <SearchInput
+            value={search}
+            onChange={(v) => { setSearch(v); setPage(1); }}
+            placeholder="Search beverages by name…"
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">Low-stock alert threshold:</span>
+            <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-bold text-slate-800 tabular-nums">
+              {threshold} units
+            </span>
+          </div>
         </div>
 
         {isLoading ? (
-          <TableSkeleton cols={isAdmin ? 7 : 6} rows={PAGE_SIZE} />
+          <TableSkeleton cols={isAdmin ? 8 : 7} rows={PAGE_SIZE} />
         ) : isError ? (
           <ErrorBlock message={error?.message ?? "Failed to load"} onRetry={refetch} />
         ) : filtered.length === 0 ? (
           <EmptyState
             title={search ? "No matching beverages" : "No beverages yet"}
             description={search ? "Try a different search." : isAdmin ? "Add your first beverage to get started." : "No beverages have been added yet."}
-            icon={<IconBox size={22} />}
+            icon={<IconBox size={24} />}
             action={
               search ? (
                 <Button variant="outline" size="sm" onClick={() => setSearch("")}>
@@ -140,30 +147,34 @@ export default function InventoryPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[var(--border)] text-left text-xs font-semibold text-[var(--muted-foreground)]">
+                  <tr className="border-b border-[var(--border)] bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                     <Th onClick={() => toggleSort("name")} active={sort === "name"}>Beverage</Th>
                     <th scope="col" className="px-4 py-3">Category</th>
                     <Th onClick={() => toggleSort("price")} active={sort === "price"}>Price</Th>
                     <Th onClick={() => toggleSort("stock")} active={sort === "stock"}>Warehouse</Th>
-                    <th scope="col" className="px-4 py-3">Counter</th>
-                    <th scope="col" className="px-4 py-3">Warehouse status</th>
-                    <th scope="col" className="px-4 py-3">Active</th>
+                    <th scope="col" className="px-4 py-3 text-right">Counter Bar</th>
+                    <th scope="col" className="px-4 py-3">Warehouse Status</th>
+                    <th scope="col" className="px-4 py-3">Catalog Status</th>
                     {isAdmin && <th scope="col" className="px-4 py-3 text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
                   {pageItems.map((item) => (
-                    <tr key={item.id} className="transition-colors hover:bg-[var(--surface-muted)]">
-                      <td className="px-4 py-3 font-medium text-[var(--foreground)]">{item.name}</td>
-                      <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">{item.category || "Other"}</td>
-                      <td className="px-4 py-3 tabular-nums">{formatMoney(item.price)}</td>
-                      <td className="px-4 py-3 tabular-nums font-medium">{item.stock}</td>
-                      <td className="px-4 py-3 tabular-nums text-[var(--muted-foreground)]">{item.counterStock}</td>
+                    <tr key={item.id} className="transition-colors hover:bg-slate-50/60">
+                      <td className="px-4 py-3 font-semibold text-slate-900">{item.name}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 border border-slate-200/60">
+                          {item.category || "Other"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 tabular-nums font-semibold text-slate-900">{formatMoney(item.price)}</td>
+                      <td className="px-4 py-3 tabular-nums font-bold text-slate-900">{item.stock}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-600 font-medium">{item.counterStock}</td>
                       <td className="px-4 py-3"><StockStatusBadge status={stockStatus(item, threshold)} /></td>
                       <td className="px-4 py-3"><ActiveBadge active={item.isActive} /></td>
                       {isAdmin && (
                         <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -230,7 +241,7 @@ function Th({
     <th scope="col" className="px-4 py-3">
       <button
         onClick={onClick}
-        className="inline-flex items-center gap-1 transition-colors hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+        className="inline-flex items-center gap-1 font-semibold text-[11px] uppercase tracking-wider text-slate-500 hover:text-slate-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
       >
         <span>{children}</span>
         <span className={active ? "text-[var(--brand)]" : "opacity-40"} aria-hidden="true">

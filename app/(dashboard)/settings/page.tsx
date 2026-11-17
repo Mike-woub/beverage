@@ -44,8 +44,11 @@ export default function SettingsPage() {
   }
 
   return (
-    <div>
-      <PageHeader title="Settings" description="System-wide configuration." />
+    <div className="space-y-6">
+      <PageHeader
+        title="System Settings"
+        description="Configure system-wide inventory parameters, stock alert thresholds, and operational rules."
+      />
 
       {isLoading || !setting ? (
         <Card className="max-w-xl p-6 space-y-4" aria-busy="true">
@@ -53,18 +56,25 @@ export default function SettingsPage() {
           <Skeleton className="h-4 w-3/4" />
           <div className="pt-2 space-y-2">
             <Skeleton className="h-4 w-36" />
-            <Skeleton className="h-10 w-48" />
+            <Skeleton className="h-10 w-48 rounded-lg" />
           </div>
-          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-32 rounded-lg" />
         </Card>
       ) : (
-        <Card className="max-w-xl p-6">
-          <h2 className="font-semibold text-[var(--foreground)]">Inventory</h2>
-          <p className="mt-1 text-sm text-pretty text-[var(--muted-foreground)]">
-            A beverage is flagged as low-stock when its stock is at or below this threshold.
-          </p>
-          <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-4">
-            <Field label="Global low-stock threshold" htmlFor="threshold" error={error}>
+        <Card className="max-w-xl p-6 shadow-xs">
+          <div className="border-b border-[var(--border)] pb-4 mb-5">
+            <h2 className="font-bold text-base text-slate-900">Inventory Threshold Parameters</h2>
+            <p className="mt-1 text-xs text-slate-500 leading-normal">
+              A beverage item in either the warehouse reserve or the counter bar is flagged as low-stock when its unit balance falls at or below this threshold value.
+            </p>
+          </div>
+          <form onSubmit={onSubmit} className="flex flex-col gap-4">
+            <Field
+              label="Global Low-Stock Warning Threshold (Units)"
+              htmlFor="threshold"
+              error={error}
+              hint="Units remaining that trigger Amber warning badges across the POS and inventory dashboards."
+            >
               <Input
                 id="threshold"
                 type="number"
@@ -75,11 +85,11 @@ export default function SettingsPage() {
                 className="max-w-[12rem] tabular-nums"
               />
             </Field>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 pt-2">
               <Button type="submit" loading={updateSetting.isPending}>
-                Save settings
+                Save Settings
               </Button>
-              <span className="text-xs tabular-nums text-[var(--muted-foreground)]">
+              <span className="text-xs tabular-nums text-slate-400">
                 Last updated {formatDateTime(setting.updatedAt)}
               </span>
             </div>

@@ -10,9 +10,9 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * Hand-built UI primitives replacing shadcn/ui (not installable here). Styling
- * uses the design tokens in app/globals.css. All are accessible: labels tie to
- * controls, focus rings are visible, disabled states are conveyed.
+ * Architectural Enterprise SaaS UI Primitives
+ * Built on the Deep Midnight Teal & Slate design tokens.
+ * Complies with strict accessibility, keyboard navigation, and focus management standards.
  */
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "outline";
@@ -20,19 +20,21 @@ type Size = "sm" | "md" | "lg";
 
 const VARIANT: Record<Variant, string> = {
   primary:
-    "bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-strong)] shadow-[var(--shadow-sm)]",
+    "bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-strong)] active:bg-[var(--brand-dark)] shadow-[var(--shadow-xs)] border border-teal-800/20 active:scale-[0.98]",
   secondary:
-    "bg-[var(--surface-muted)] text-[var(--foreground)] hover:bg-[var(--border)]",
-  ghost: "text-[var(--foreground)] hover:bg-[var(--surface-muted)]",
-  danger: "bg-[var(--danger)] text-white hover:brightness-95 shadow-[var(--shadow-sm)]",
+    "bg-[var(--surface-muted)] text-[var(--foreground)] hover:bg-slate-200/70 border border-slate-200/80 active:scale-[0.98]",
+  ghost:
+    "text-[var(--foreground-body)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] active:scale-[0.98]",
+  danger:
+    "bg-[var(--danger)] text-white hover:brightness-95 active:brightness-90 shadow-[var(--shadow-xs)] border border-rose-800/20 active:scale-[0.98]",
   outline:
-    "border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-muted)]",
+    "border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-muted)] hover:border-[var(--border-hover)] shadow-[var(--shadow-xs)] active:scale-[0.98]",
 };
 
 const SIZE: Record<Size, string> = {
-  sm: "h-8 px-3 text-sm gap-1.5",
-  md: "h-10 px-4 text-sm gap-2",
-  lg: "h-11 px-5 text-base gap-2",
+  sm: "h-8 px-2.5 text-xs font-medium gap-1.5 rounded-[var(--radius)]",
+  md: "h-10 px-3.5 text-sm font-medium gap-2 rounded-[var(--radius-md)]",
+  lg: "h-11 px-5 text-sm font-semibold gap-2.5 rounded-[var(--radius-md)]",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -50,9 +52,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center rounded-[var(--radius)] font-medium transition-colors",
+        "inline-flex select-none items-center justify-center transition-all duration-150 ease-out",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]",
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        "disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:active:scale-100",
         VARIANT[variant],
         SIZE[size],
         className,
@@ -61,8 +63,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     >
       {loading && (
         <span
-          className="size-4 rounded-full border-2 border-current border-r-transparent"
-          style={{ animation: "bev-spin 0.6s linear infinite" }}
+          className="size-3.5 rounded-full border-2 border-current border-r-transparent animate-spin"
           aria-hidden
         />
       )}
@@ -77,10 +78,11 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
       <input
         ref={ref}
         className={cn(
-          "h-10 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)]",
-          "placeholder:text-[var(--muted-foreground)] transition-colors",
-          "focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-tint)]",
-          "disabled:cursor-not-allowed disabled:opacity-60",
+          "h-10 w-full rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] shadow-[var(--shadow-xs)]",
+          "placeholder:text-[var(--muted-foreground)] transition-all duration-150",
+          "focus:border-[var(--brand)] focus:outline-none focus:ring-3 focus:ring-[var(--brand-border)]",
+          "hover:border-[var(--border-hover)]",
+          "disabled:cursor-not-allowed disabled:bg-[var(--surface-muted)] disabled:opacity-60",
           className,
         )}
         {...props}
@@ -97,9 +99,11 @@ export const Textarea = forwardRef<
     <textarea
       ref={ref}
       className={cn(
-        "w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]",
-        "placeholder:text-[var(--muted-foreground)] transition-colors",
-        "focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-tint)]",
+        "w-full rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)] shadow-[var(--shadow-xs)]",
+        "placeholder:text-[var(--muted-foreground)] transition-all duration-150",
+        "focus:border-[var(--brand)] focus:outline-none focus:ring-3 focus:ring-[var(--brand-border)]",
+        "hover:border-[var(--border-hover)]",
+        "disabled:cursor-not-allowed disabled:bg-[var(--surface-muted)] disabled:opacity-60",
         className,
       )}
       {...props}
@@ -110,17 +114,27 @@ export const Textarea = forwardRef<
 export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
   function Select({ className, children, ...props }, ref) {
     return (
-      <select
-        ref={ref}
-        className={cn(
-          "h-10 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)]",
-          "focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-tint)]",
-          className,
-        )}
-        {...props}
-      >
-        {children}
-      </select>
+      <div className="relative inline-block w-full">
+        <select
+          ref={ref}
+          className={cn(
+            "h-10 w-full appearance-none rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface)] px-3 pr-8 text-sm font-medium text-[var(--foreground)] shadow-[var(--shadow-xs)]",
+            "transition-all duration-150",
+            "focus:border-[var(--brand)] focus:outline-none focus:ring-3 focus:ring-[var(--brand-border)]",
+            "hover:border-[var(--border-hover)]",
+            "disabled:cursor-not-allowed disabled:bg-[var(--surface-muted)] disabled:opacity-60",
+            className,
+          )}
+          {...props}
+        >
+          {children}
+        </select>
+        <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.75">
+            <path d="M2.5 4.5L6 8L9.5 4.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </div>
     );
   },
 );
@@ -143,7 +157,7 @@ export function Field({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="text-sm font-medium text-[var(--foreground)]">
+      <label htmlFor={htmlFor} className="text-xs font-semibold tracking-wide text-slate-700">
         {label}
       </label>
       {children}
@@ -153,7 +167,7 @@ export function Field({
         </p>
       )}
       {error && (
-        <p id={errorId} role="alert" className="text-xs text-[var(--danger)]">
+        <p id={errorId} role="alert" className="text-xs font-medium text-[var(--danger)]">
           {error}
         </p>
       )}
@@ -171,7 +185,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-sm)]",
+        "rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-sm)] transition-shadow duration-150",
         className,
       )}
     >
@@ -181,45 +195,67 @@ export function Card({
 }
 
 type Tone = "neutral" | "success" | "warning" | "danger" | "info" | "brand";
-const TONE: Record<Tone, string> = {
-  neutral: "bg-[var(--surface-muted)] text-[var(--muted-foreground)]",
-  success: "bg-[var(--success-tint)] text-[var(--success)]",
-  warning: "bg-[var(--warning-tint)] text-[var(--warning)]",
-  danger: "bg-[var(--danger-tint)] text-[var(--danger)]",
-  info: "bg-[var(--info-tint)] text-[var(--info)]",
-  brand: "bg-[var(--brand-tint)] text-[var(--brand-strong)]",
+
+const TONE_STYLES: Record<Tone, { container: string; dot: string }> = {
+  neutral: {
+    container: "bg-slate-100 text-slate-700 border-slate-200/80",
+    dot: "bg-slate-400",
+  },
+  success: {
+    container: "bg-[var(--success-tint)] text-[var(--success)] border-[var(--success-border)]",
+    dot: "bg-[var(--success-dot)]",
+  },
+  warning: {
+    container: "bg-[var(--warning-tint)] text-[var(--warning)] border-[var(--warning-border)]",
+    dot: "bg-[var(--warning-dot)]",
+  },
+  danger: {
+    container: "bg-[var(--danger-tint)] text-[var(--danger)] border-[var(--danger-border)]",
+    dot: "bg-[var(--danger-dot)]",
+  },
+  info: {
+    container: "bg-[var(--info-tint)] text-[var(--info)] border-[var(--info-border)]",
+    dot: "bg-[var(--info-dot)]",
+  },
+  brand: {
+    container: "bg-[var(--brand-tint)] text-[var(--brand)] border-[var(--brand-border)]",
+    dot: "bg-[var(--brand)]",
+  },
 };
 
 export function Badge({
   tone = "neutral",
   children,
   className,
+  dot = false,
 }: {
   tone?: Tone;
   children: React.ReactNode;
   className?: string;
+  dot?: boolean;
 }) {
+  const styles = TONE_STYLES[tone];
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums",
-        TONE[tone],
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold tabular-nums leading-none tracking-tight",
+        styles.container,
         className,
       )}
     >
+      {dot && <span className={cn("size-1.5 rounded-full", styles.dot)} aria-hidden />}
       {children}
     </span>
   );
 }
 
-export function Spinner({ size = 24 }: { size?: number }) {
+export function Spinner({ size = 20 }: { size?: number }) {
   return (
     <span
-      className="inline-block rounded-full border-2 border-[var(--border-strong)] border-r-transparent text-[var(--brand)]"
+      className="inline-block rounded-full border-2 border-slate-200 border-r-transparent text-[var(--brand)] animate-spin"
       style={{
         width: size,
         height: size,
-        animation: "bev-spin 0.6s linear infinite",
       }}
       aria-label="Loading"
       role="status"
@@ -234,7 +270,7 @@ export function Skeleton({
   return (
     <div
       className={cn(
-        "animate-bev-pulse rounded-[var(--radius)] bg-[var(--surface-muted)]",
+        "animate-bev-pulse rounded-[var(--radius)] bg-slate-200/70",
         className,
       )}
       aria-hidden="true"
@@ -277,14 +313,14 @@ export function StatCardSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-busy="true" aria-label="Loading statistics">
       {Array.from({ length: count }).map((_, i) => (
-        <Card key={i} className="p-4">
+        <Card key={i} className="p-5">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-7 w-28" />
-              <Skeleton className="h-3 w-24" />
+            <div className="flex-1 space-y-2.5">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-8 w-28" />
+              <Skeleton className="h-3 w-20" />
             </div>
-            <Skeleton className="size-10 rounded-[var(--radius)]" />
+            <Skeleton className="size-10 rounded-[var(--radius-lg)]" />
           </div>
         </Card>
       ))}
@@ -302,11 +338,11 @@ export function GridSkeleton({ count = 6 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="flex flex-col gap-2.5 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-3"
+          className="flex flex-col gap-2.5 rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-xs)]"
         >
           <div className="flex items-start justify-between">
             <Skeleton className="h-4 w-28" />
-            <Skeleton className="size-5 rounded-full" />
+            <Skeleton className="size-6 rounded-full" />
           </div>
           <Skeleton className="h-5 w-16" />
           <Skeleton className="h-3 w-20" />
@@ -330,17 +366,17 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
       {icon && (
-        <div className="flex size-12 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--muted-foreground)]">
+        <div className="flex size-12 items-center justify-center rounded-full border border-slate-200/80 bg-slate-50 text-slate-500 shadow-[var(--shadow-xs)]">
           {icon}
         </div>
       )}
       <div>
-        <p className="font-medium text-balance text-[var(--foreground)]">{title}</p>
+        <p className="text-sm font-semibold text-slate-900">{title}</p>
         {description && (
-          <p className="mt-1 text-sm text-pretty text-[var(--muted-foreground)]">{description}</p>
+          <p className="mt-1 text-xs text-slate-500 max-w-sm">{description}</p>
         )}
       </div>
-      {action && <div className="mt-1">{action}</div>}
+      {action && <div className="mt-1.5">{action}</div>}
     </div>
   );
 }
@@ -348,11 +384,11 @@ export function EmptyState({
 export function LoadingBlock({ label = "Loading" }: { label?: string }) {
   return (
     <div
-      className="flex items-center justify-center gap-3 py-14 text-sm text-[var(--muted-foreground)]"
+      className="flex items-center justify-center gap-2.5 py-14 text-sm font-medium text-slate-500"
       role="status"
       aria-live="polite"
     >
-      <Spinner size={20} />
+      <Spinner size={18} />
       <span>{label}…</span>
     </div>
   );
@@ -364,7 +400,14 @@ export function ErrorBlock({ message, onRetry }: { message: string; onRetry?: ()
       className="flex flex-col items-center justify-center gap-3 py-14 text-center"
       role="alert"
     >
-      <p className="text-sm font-medium text-balance text-[var(--danger)]">{message}</p>
+      <div className="flex size-10 items-center justify-center rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      </div>
+      <p className="text-sm font-semibold text-slate-900">{message}</p>
       {onRetry && (
         <Button variant="outline" size="sm" onClick={onRetry}>
           Try again

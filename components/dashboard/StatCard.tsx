@@ -11,14 +11,42 @@ export interface StatCardProps {
   className?: string;
 }
 
-const TONE_COLOR: Record<string, string> = {
-  brand: "text-[var(--brand)]",
-  success: "text-[var(--success)]",
-  warning: "text-[var(--warning)]",
-  danger: "text-[var(--danger)]",
-  info: "text-[var(--info)]",
-  neutral: "text-[var(--muted-foreground)]",
-  purple: "text-purple-600",
+const ICON_CONTAINER_STYLES: Record<string, { bg: string; text: string; border: string }> = {
+  brand: {
+    bg: "bg-teal-50",
+    text: "text-[var(--brand)]",
+    border: "border-teal-200/70",
+  },
+  success: {
+    bg: "bg-emerald-50",
+    text: "text-[var(--success)]",
+    border: "border-emerald-200/70",
+  },
+  warning: {
+    bg: "bg-amber-50",
+    text: "text-[var(--warning)]",
+    border: "border-amber-200/70",
+  },
+  danger: {
+    bg: "bg-rose-50",
+    text: "text-[var(--danger)]",
+    border: "border-rose-200/70",
+  },
+  info: {
+    bg: "bg-sky-50",
+    text: "text-[var(--info)]",
+    border: "border-sky-200/70",
+  },
+  neutral: {
+    bg: "bg-slate-50",
+    text: "text-slate-600",
+    border: "border-slate-200",
+  },
+  purple: {
+    bg: "bg-purple-50",
+    text: "text-purple-700",
+    border: "border-purple-200/70",
+  },
 };
 
 export function StatCard({
@@ -30,25 +58,44 @@ export function StatCard({
   subValue,
   className,
 }: StatCardProps) {
-  const color = TONE_COLOR[tone] ?? TONE_COLOR.brand;
+  const iconStyle = ICON_CONTAINER_STYLES[tone] ?? ICON_CONTAINER_STYLES.brand;
 
   return (
-    <Card className={cn("p-4", className)}>
+    <Card className={cn("p-5 flex flex-col justify-between hover:border-slate-300 transition-colors", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-[var(--muted-foreground)]">{label}</p>
-          <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-[var(--foreground)]">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            {label}
+          </p>
+          <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums text-slate-900 sm:text-3xl">
             {value}
           </p>
         </div>
-        <span className={cn("shrink-0", color)} aria-hidden="true">
+        <span
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-xl border shadow-xs",
+            iconStyle.bg,
+            iconStyle.text,
+            iconStyle.border,
+          )}
+          aria-hidden="true"
+        >
           {icon}
         </span>
       </div>
+
       {(hint || subValue) && (
-        <div className="mt-2 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-          {hint && <span>{hint}</span>}
-          {subValue && <span className="tabular-nums">{subValue}</span>}
+        <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5 text-xs">
+          {hint && (
+            <span className="font-medium text-slate-500">
+              {hint}
+            </span>
+          )}
+          {subValue && (
+            <span className="ml-auto font-semibold tabular-nums text-slate-700">
+              {subValue}
+            </span>
+          )}
         </div>
       )}
     </Card>

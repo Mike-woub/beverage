@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRevenue } from "@/lib/hooks/useDashboard";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button, Card, EmptyState, ErrorBlock, Skeleton } from "@/components/ui/primitives";
+import { StatCard } from "@/components/dashboard/StatCard";
 import { HorizontalBars } from "@/components/dashboard/charts";
-import { IconMoney } from "@/components/ui/icons";
+import { IconCart, IconMoney, IconTrend } from "@/components/ui/icons";
 import { formatDayLabel, formatMoney } from "@/lib/utils";
 
 /** ADMIN revenue report: total sales per day, with a selectable window. */
@@ -20,43 +21,54 @@ export default function RevenuePage() {
   const windows = [7, 30, 90];
 
   return (
-    <div>
-      <PageHeader
-        title="Revenue"
-        description="Daily revenue across the business."
-      />
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <PageHeader
+          title="Revenue Analytics"
+          description="Daily revenue performance and business velocity."
+        />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="p-4">
-          <p className="text-sm text-[var(--muted-foreground)]">Total revenue</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--foreground)]">
-            {formatMoney(total)}
-          </p>
-          <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">last {days} days</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-[var(--muted-foreground)]">Orders</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--foreground)]">{totalOrders}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-[var(--muted-foreground)]">Avg / active day</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--foreground)]">
-            {formatMoney(avgPerDay)}
-          </p>
-        </Card>
+        {/* Window Selector Tabs */}
+        <div className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-slate-100/80 p-1">
+          {windows.map((w) => (
+            <button
+              key={w}
+              type="button"
+              onClick={() => setDays(w)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                days === w
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              {w} days
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="mb-4 flex items-center gap-2">
-        {windows.map((w) => (
-          <Button
-            key={w}
-            variant={days === w ? "primary" : "outline"}
-            size="sm"
-            onClick={() => setDays(w)}
-          >
-            {w} days
-          </Button>
-        ))}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Total Revenue"
+          value={formatMoney(total)}
+          icon={<IconMoney size={20} />}
+          tone="success"
+          hint={`Window: past ${days} days`}
+        />
+        <StatCard
+          label="Completed Orders"
+          value={totalOrders}
+          icon={<IconCart size={20} />}
+          tone="info"
+          hint="total sales tickets"
+        />
+        <StatCard
+          label="Avg / Active Day"
+          value={formatMoney(avgPerDay)}
+          icon={<IconTrend size={20} />}
+          tone="brand"
+          hint="daily revenue velocity"
+        />
       </div>
 
       {isLoading ? (
@@ -90,23 +102,26 @@ export default function RevenuePage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Card className="p-5">
-            <h2 className="mb-4 font-semibold text-[var(--foreground)]">Daily totals</h2>
+          <Card className="overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[var(--border)] bg-slate-50/50 px-5 py-4">
+              <h2 className="font-semibold text-slate-900">Daily Breakdown</h2>
+              <span className="text-xs text-slate-500">{data.length} active days</span>
+            </div>
             <div className="max-h-[60vh] overflow-y-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[var(--border)] text-left text-xs font-semibold text-[var(--muted-foreground)]">
-                    <th scope="col" className="px-3 py-2">Day</th>
-                    <th scope="col" className="px-3 py-2 text-right">Orders</th>
-                    <th scope="col" className="px-3 py-2 text-right">Revenue</th>
+                  <tr className="border-b border-[var(--border)] bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    <th scope="col" className="px-4 py-3">Day</th>
+                    <th scope="col" className="px-4 py-3 text-right">Orders</th>
+                    <th scope="col" className="px-4 py-3 text-right">Revenue</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
                   {data.map((r) => (
-                    <tr key={r.day} className="transition-colors hover:bg-[var(--surface-muted)]">
-                      <td className="px-3 py-2 font-medium text-[var(--foreground)]">{formatDayLabel(r.day)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[var(--muted-foreground)]">{r.orderCount}</td>
-                      <td className="px-3 py-2 text-right font-medium tabular-nums">{formatMoney(r.revenue)}</td>
+                    <tr key={r.day} className="transition-colors hover:bg-slate-50/60">
+                      <td className="px-4 py-3 font-medium text-slate-900">{formatDayLabel(r.day)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-600">{r.orderCount}</td>
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">{formatMoney(r.revenue)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -114,8 +129,11 @@ export default function RevenuePage() {
             </div>
           </Card>
 
-          <Card className="p-5">
-            <h2 className="mb-4 font-semibold text-[var(--foreground)]">Revenue by day</h2>
+          <Card className="overflow-hidden p-5">
+            <div className="mb-4 flex items-center justify-between border-b border-[var(--border)] pb-3">
+              <h2 className="font-semibold text-slate-900">Revenue by Day</h2>
+              <span className="text-xs text-slate-400">ETB Trend</span>
+            </div>
             <HorizontalBars
               data={[...data]
                 .reverse()

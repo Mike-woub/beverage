@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/primitives";
 import { IconClose } from "@/components/ui/icons";
 
 /**
- * Accessible Modal + ConfirmDialog.
- * Conforms to baseline-ui and fixing-accessibility:
- * - Traps focus while open and restores focus to trigger on close.
- * - Handles Escape key to close without unexpected scroll jumps.
- * - ARIA labelledby and describedby links.
- * - Fast compositor-only entrance (140ms ease-out).
- * - Responsive to mobile dvh.
+ * Architectural Enterprise Accessible Modal & ConfirmDialog
+ * Features:
+ * - High-craft backdrop blur (bg-slate-900/40 backdrop-blur-sm)
+ * - Traps keyboard focus; closes on Escape; restores focus on exit
+ * - Clean header divider, structured body, and sticky footer
+ * - Zero layout jump on open/close
  */
+
 export function Modal({
   open,
   onClose,
@@ -102,7 +102,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgb(15_23_42_/_0.45)] p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 backdrop-blur-sm p-4 sm:items-center transition-all duration-150"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -115,18 +115,18 @@ export function Modal({
         aria-describedby={description ? descId : undefined}
         tabIndex={-1}
         className={cn(
-          "flex max-h-[calc(100dvh-2rem)] w-full flex-col rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-md)] focus:outline-none",
+          "flex max-h-[calc(100dvh-2rem)] w-full flex-col rounded-2xl border border-slate-200/90 bg-[var(--surface)] shadow-2xl focus:outline-none",
           width,
         )}
-        style={{ animation: "bev-fade-in 140ms ease-out" }}
+        style={{ animation: "bev-fade-in 140ms cubic-bezier(0.16, 1, 0.3, 1)" }}
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-4">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--border)] px-6 py-5">
           <div>
-            <h2 id={titleId} className="text-base font-semibold text-balance text-[var(--foreground)]">
+            <h2 id={titleId} className="text-base font-bold tracking-tight text-slate-900">
               {title}
             </h2>
             {description && (
-              <p id={descId} className="mt-0.5 text-sm text-pretty text-[var(--muted-foreground)]">
+              <p id={descId} className="mt-0.5 text-xs text-slate-500">
                 {description}
               </p>
             )}
@@ -134,14 +134,14 @@ export function Modal({
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="rounded-[var(--radius-sm)] p-1 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+            className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
           >
             <IconClose size={18} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
         {footer && (
-          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[var(--border)] px-5 py-4">
+          <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-[var(--border)] bg-slate-50/50 px-6 py-4 rounded-b-2xl">
             {footer}
           </div>
         )}
@@ -190,7 +190,7 @@ export function ConfirmDialog({
         </>
       }
     >
-      <p className="text-sm text-pretty text-[var(--muted-foreground)]">{message}</p>
+      <p className="text-sm leading-relaxed text-slate-600">{message}</p>
     </Modal>
   );
 }

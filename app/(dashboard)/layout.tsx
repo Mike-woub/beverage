@@ -8,12 +8,10 @@ import { Spinner } from "@/components/ui/primitives";
 import { IconMenu } from "@/components/ui/icons";
 
 /**
- * Authenticated shell. Per the skill, the segment layout guards the session:
- * redirect to /login when unauthenticated, and redirect away from areas the
- * current role may not access. Renders the sidebar + a mobile topbar.
+ * Authenticated shell with Architectural Enterprise SaaS layout.
+ * Role-gating preserved; responsive mobile topbar with accessible menu drawer.
  */
 
-// Map the first path segment to its NavKey for role-gating.
 const SEGMENT_TO_KEY: Record<string, NavKey> = {
   dashboard: "dashboard",
   "new-order": "new-order",
@@ -53,7 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (status !== "authenticated" || !user) {
     return (
-      <div className="flex min-h-dvh items-center justify-center">
+      <div className="flex min-h-dvh items-center justify-center bg-[var(--background)]">
         <Spinner size={28} />
       </div>
     );
@@ -63,19 +61,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-dvh bg-[var(--background)]">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 lg:hidden">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="rounded-[var(--radius-sm)] p-1.5 text-[var(--foreground)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-            aria-label="Open navigation menu"
-          >
-            <IconMenu size={22} />
-          </button>
-          <span className="text-sm font-semibold text-[var(--foreground)]">
-            Beverage Manager
-          </span>
+        {/* Mobile Header Topbar */}
+        <header className="flex h-16 items-center justify-between border-b border-[var(--border)] bg-white px-4 lg:hidden shadow-xs">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+              aria-label="Open navigation menu"
+            >
+              <IconMenu size={22} />
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="flex size-7 items-center justify-center rounded-lg bg-[var(--brand)] text-xs font-bold text-white">
+                B
+              </span>
+              <span className="text-sm font-bold tracking-tight text-slate-900">
+                Addis Beverage
+              </span>
+            </div>
+          </div>
         </header>
-        <main className="flex-1 overflow-x-hidden p-4 sm:p-6 lg:p-8">{children}</main>
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-x-hidden p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          {children}
+        </main>
       </div>
     </div>
   );

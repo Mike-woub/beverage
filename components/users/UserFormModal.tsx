@@ -134,7 +134,7 @@ export function UserFormModal({
               type="button"
               onClick={() => setShow((s) => !s)}
               aria-label={show ? "Hide password" : "Show password"}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[var(--radius-sm)] p-1 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             >
               {show ? <IconEyeOff size={18} /> : <IconEye size={18} />}
             </button>

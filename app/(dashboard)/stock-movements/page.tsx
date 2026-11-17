@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/primitives";
 import { MovementBadge, movementSign } from "@/components/shared/status";
 import { IconMovements, IconPlus } from "@/components/ui/icons";
-import { formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import type { MovementType } from "@/lib/types";
 
 const PAGE_SIZE = 12;
@@ -100,10 +100,10 @@ export default function StockMovementsPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Stock Movements"
-        description="Immutable audit trail of every stock change."
+        description="Immutable enterprise audit trail tracking every beverage movement, sale, transfer, and manual adjustment."
         action={
           <Button onClick={() => setAdjustOpen(true)}>
             <IconPlus size={16} />
@@ -112,94 +112,96 @@ export default function StockMovementsPage() {
         }
       />
 
-      <Card>
-        <div className="flex flex-col gap-3 border-b border-[var(--border)] p-4 sm:flex-row">
-          <Select
-            value={itemFilter}
-            onChange={(e) => { setItemFilter(e.target.value); setPage(1); }}
-            className="sm:w-56"
-            aria-label="Filter by beverage"
-          >
-            <option value="">All beverages</option>
-            {items?.map((i) => (
-              <option key={i.id} value={i.id}>{i.name}</option>
-            ))}
-          </Select>
-          <Select
-            value={typeFilter}
-            onChange={(e) => { setTypeFilter(e.target.value as MovementType | "ALL"); setPage(1); }}
-            className="sm:w-48"
-            aria-label="Filter by movement type"
-          >
-            <option value="ALL">All types</option>
-            {MOVEMENT_TYPES.map((t) => (
-              <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
-            ))}
-          </Select>
+      <Card className="overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-[var(--border)] bg-slate-50/50 p-4 sm:flex-row sm:items-center">
+          <div className="sm:w-56">
+            <Select
+              value={itemFilter}
+              onChange={(e) => { setItemFilter(e.target.value); setPage(1); }}
+              aria-label="Filter by beverage"
+            >
+              <option value="">All beverages</option>
+              {items?.map((i) => (
+                <option key={i.id} value={i.id}>{i.name}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="sm:w-56">
+            <Select
+              value={typeFilter}
+              onChange={(e) => { setTypeFilter(e.target.value as MovementType | "ALL"); setPage(1); }}
+              aria-label="Filter by movement type"
+            >
+              <option value="ALL">All movement types</option>
+              {MOVEMENT_TYPES.map((t) => (
+                <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
+              ))}
+            </Select>
+          </div>
+          {(itemFilter || typeFilter !== "ALL") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setItemFilter(""); setTypeFilter("ALL"); setPage(1); }}
+            >
+              Reset filters
+            </Button>
+          )}
         </div>
 
         {isLoading ? (
-          <TableSkeleton cols={7} rows={PAGE_SIZE} />
+          <TableSkeleton cols={6} rows={PAGE_SIZE} />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title="No movements found"
-            description={itemFilter || typeFilter !== "ALL" ? "Try adjusting the filters." : "Stock movements will appear here once inventory changes occur."}
-            icon={<IconMovements size={22} />}
-            action={
-              itemFilter || typeFilter !== "ALL" ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setItemFilter("");
-                    setTypeFilter("ALL");
-                  }}
-                >
-                  Clear filters
-                </Button>
-              ) : undefined
-            }
+            title="No movements match the filters"
+            description="Try clearing the filters to view all audit records."
+            icon={<IconMovements size={24} />}
           />
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[var(--border)] text-left text-xs font-semibold text-[var(--muted-foreground)]">
-                    <th scope="col" className="px-4 py-3">Date</th>
+                  <tr className="border-b border-[var(--border)] bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    <th scope="col" className="px-4 py-3">Timestamp</th>
                     <th scope="col" className="px-4 py-3">Beverage</th>
-                    <th scope="col" className="px-4 py-3">Type</th>
-                    <th scope="col" className="px-4 py-3">Qty</th>
-                    <th scope="col" className="px-4 py-3">User</th>
+                    <th scope="col" className="px-4 py-3">Movement Type</th>
+                    <th scope="col" className="px-4 py-3 text-right">Units Change</th>
                     <th scope="col" className="px-4 py-3">Reference</th>
                     <th scope="col" className="px-4 py-3">Description</th>
+                    <th scope="col" className="px-4 py-3">Operator</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
                   {pageItems.map((m) => {
                     const sign = movementSign(m.movementType);
+                    const isPositive = sign === "+";
                     return (
-                      <tr key={m.id} className="transition-colors hover:bg-[var(--surface-muted)]">
-                        <td className="whitespace-nowrap px-4 py-3 tabular-nums text-[var(--muted-foreground)]">{formatDateTime(m.createdAt)}</td>
-                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">{m.itemName}</td>
+                      <tr key={m.id} className="transition-colors hover:bg-slate-50/60">
+                        <td className="whitespace-nowrap px-4 py-3 tabular-nums text-xs text-slate-500 font-medium">
+                          {formatDateTime(m.createdAt)}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-slate-900">{m.itemName}</td>
                         <td className="px-4 py-3"><MovementBadge type={m.movementType} /></td>
                         <td
-                          className="px-4 py-3 tabular-nums font-semibold"
-                          style={{ color: sign === "+" ? "var(--success)" : "var(--danger)" }}
+                          className={cn(
+                            "px-4 py-3 text-right tabular-nums font-bold",
+                            isPositive ? "text-[var(--success)]" : "text-[var(--danger)]",
+                          )}
                         >
                           {sign}{m.quantity}
                         </td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{m.userName}</td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]" title={m.relatedOrderNumber ?? ""}>
+                        <td className="px-4 py-3 text-xs text-slate-500" title={m.relatedOrderNumber ?? ""}>
                           {m.movementType === "ORDER_OUT"
                             ? "Order sale"
                             : m.relatedReceiptId
                               ? "Purchase"
                               : "—"}
                         </td>
-                        <td className="max-w-[16rem] truncate px-4 py-3 text-[var(--muted-foreground)]" title={m.description ?? ""}>
-                          {m.description ?? "—"}
+                        <td className="max-w-[16rem] truncate px-4 py-3 text-xs text-slate-500" title={m.description ?? ""}>
+                          {m.description || "—"}
                         </td>
+                        <td className="px-4 py-3 text-xs text-slate-600 font-medium">{m.userName}</td>
                       </tr>
                     );
                   })}
@@ -211,52 +213,78 @@ export default function StockMovementsPage() {
         )}
       </Card>
 
+      {/* Manual Stock Adjustment Modal */}
       <Modal
         open={adjustOpen}
         onClose={() => setAdjustOpen(false)}
-        title="Stock adjustment"
-        description="Increase or decrease stock. A reason is required and recorded in the audit trail."
+        title="Manual Stock Adjustment"
+        description="Records an audit-logged inventory change with mandatory reason."
+        size="md"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setAdjustOpen(false)} disabled={createAdjustment.isPending}>
-              Cancel
-            </Button>
-            <Button type="submit" form="adjust-form" loading={createAdjustment.isPending}>
-              Record adjustment
+            <Button variant="ghost" onClick={() => setAdjustOpen(false)}>Cancel</Button>
+            <Button type="submit" form="adjustment-form" loading={createAdjustment.isPending}>
+              Commit Adjustment
             </Button>
           </>
         }
       >
-        <form id="adjust-form" onSubmit={submitAdjustment} className="flex flex-col gap-4" noValidate>
-          <Field label="Beverage" htmlFor="adj-item" error={errors.itemId}>
+        <form id="adjustment-form" onSubmit={submitAdjustment} className="flex flex-col gap-4" noValidate>
+          <Field label="Beverage Item" htmlFor="adj-item" error={errors.itemId}>
             <Select id="adj-item" value={itemId} onChange={(e) => setItemId(e.target.value)}>
-              <option value="">Select a beverage…</option>
+              <option value="">Select beverage…</option>
               {activeItems.map((i) => (
                 <option key={i.id} value={i.id}>
-                  {i.name} (warehouse {i.stock}, counter {i.counterStock})
+                  {i.name} (Warehouse: {i.stock}, Counter: {i.counterStock})
                 </option>
               ))}
             </Select>
           </Field>
-          <Field label="Stock pool" htmlFor="adj-pool">
-            <Select id="adj-pool" value={pool} onChange={(e) => setPool(e.target.value as "WAREHOUSE" | "COUNTER")}>
-              <option value="WAREHOUSE">Warehouse</option>
-              <option value="COUNTER">Counter</option>
-            </Select>
-          </Field>
+
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Direction" htmlFor="adj-dir">
-              <Select id="adj-dir" value={direction} onChange={(e) => setDirection(e.target.value as "IN" | "OUT")}>
-                <option value="IN">Increase (+)</option>
-                <option value="OUT">Decrease (−)</option>
+            <Field label="Stock Location" htmlFor="adj-pool">
+              <Select
+                id="adj-pool"
+                value={pool}
+                onChange={(e) => setPool(e.target.value as "WAREHOUSE" | "COUNTER")}
+              >
+                <option value="WAREHOUSE">Warehouse Reserve</option>
+                <option value="COUNTER">Counter Bar</option>
               </Select>
             </Field>
-            <Field label="Quantity" htmlFor="adj-qty" error={errors.quantity}>
-              <Input id="adj-qty" type="number" min="1" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="0" />
+
+            <Field label="Direction" htmlFor="adj-dir">
+              <Select
+                id="adj-dir"
+                value={direction}
+                onChange={(e) => setDirection(e.target.value as "IN" | "OUT")}
+              >
+                <option value="IN">Add Stock (+ IN)</option>
+                <option value="OUT">Deduct Stock (− OUT)</option>
+              </Select>
             </Field>
           </div>
-          <Field label="Reason" htmlFor="adj-reason" error={errors.reason}>
-            <Textarea id="adj-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Breakage, stock count correction" />
+
+          <Field label="Quantity" htmlFor="adj-qty" error={errors.quantity}>
+            <Input
+              id="adj-qty"
+              type="number"
+              min="1"
+              step="1"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder="e.g. 5"
+            />
+          </Field>
+
+          <Field label="Reason / Explanation" htmlFor="adj-reason" error={errors.reason} hint="Mandatory explanation for audit compliance.">
+            <Textarea
+              id="adj-reason"
+              rows={2}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Broken bottle during cleanup, physical recount variance"
+            />
           </Field>
         </form>
       </Modal>

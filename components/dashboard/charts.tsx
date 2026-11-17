@@ -11,19 +11,19 @@ import {
 } from "recharts";
 
 /**
- * Dashboard charts backed by `recharts`.
- * Clean minimal styling matching design tokens.
+ * Architectural Enterprise Dashboard Charts
+ * Clean, restrained, professional data visualization using recharts.
  */
 
 const PALETTE = [
-  "#0e7490",
-  "#2563eb",
-  "#16a34a",
-  "#d97706",
-  "#dc2626",
-  "#7c3aed",
-  "#0891b2",
-  "#db2777",
+  "#0f766e", // Deep Teal
+  "#0284c7", // Sky Blue
+  "#10b981", // Emerald
+  "#6366f1", // Indigo
+  "#f59e0b", // Amber
+  "#475569", // Slate
+  "#8b5cf6", // Purple
+  "#ec4899", // Pink
 ];
 
 export function HorizontalBars({
@@ -35,31 +35,46 @@ export function HorizontalBars({
   unit?: string;
 }) {
   const chartData = data.map((d) => ({ name: d.label, value: d.value }));
-  const height = Math.max(140, chartData.length * 40);
+  const height = Math.max(160, chartData.length * 40);
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
+      <BarChart
+        data={chartData}
+        layout="vertical"
+        margin={{ left: 8, right: 24, top: 8, bottom: 8 }}
+      >
         <XAxis type="number" hide />
         <YAxis
           type="category"
           dataKey="name"
-          width={110}
-          tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+          width={120}
+          tick={{ fontSize: 12, fill: "#475569", fontWeight: 500 }}
           axisLine={false}
           tickLine={false}
         />
         <Tooltip
-          cursor={{ fill: "var(--surface-muted)" }}
-          formatter={(v) => [`${v ?? 0}${unit}`, "Stock"]}
+          cursor={{ fill: "rgba(15, 118, 110, 0.05)", radius: 4 }}
+          formatter={(v) => [`${v ?? 0}${unit}`, "Quantity"]}
           contentStyle={{
-            borderRadius: "var(--radius)",
-            border: "1px solid var(--border)",
-            fontSize: 12,
+            borderRadius: "0.5rem",
+            backgroundColor: "#0f172a",
+            color: "#f8fafc",
+            border: "1px solid #334155",
+            fontSize: "12px",
+            fontWeight: "500",
+            padding: "8px 12px",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
           }}
+          itemStyle={{ color: "#2dd4bf" }}
         />
-        <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={18}>
+        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
           {chartData.map((_, i) => (
-            <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+            <Cell
+              key={i}
+              fill={PALETTE[i % PALETTE.length]}
+              className="transition-opacity duration-150 hover:opacity-85"
+            />
           ))}
         </Bar>
       </BarChart>
@@ -73,25 +88,28 @@ export function RankedList({
   data: Array<{ label: string; value: number; sub?: string }>;
 }) {
   const max = Math.max(1, ...data.map((d) => d.value));
+
   return (
     <ol className="flex flex-col gap-3">
       {data.map((d, i) => (
-        <li key={d.label} className="flex items-center gap-3">
-          <span
-            className="flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-            style={{ background: PALETTE[i % PALETTE.length] }}
-          >
+        <li
+          key={d.label}
+          className="flex items-center gap-3 rounded-lg p-1.5 transition-colors hover:bg-slate-50"
+        >
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-xs font-bold text-slate-700">
             {i + 1}
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="truncate font-medium text-[var(--foreground)]">{d.label}</span>
-              <span className="tabular-nums text-[var(--muted-foreground)]">{d.value}</span>
+              <span className="truncate font-medium text-slate-900">{d.label}</span>
+              <span className="tabular-nums font-semibold text-slate-700">
+                {d.value} <span className="text-xs font-normal text-slate-500">sold</span>
+              </span>
             </div>
-            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
+            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
               <div
-                className="h-full rounded-full"
-                style={{ width: `${(d.value / max) * 100}%`, background: PALETTE[i % PALETTE.length] }}
+                className="h-full rounded-full bg-[var(--brand)] transition-all duration-300"
+                style={{ width: `${(d.value / max) * 100}%` }}
               />
             </div>
           </div>
