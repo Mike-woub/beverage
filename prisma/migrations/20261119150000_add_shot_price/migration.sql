@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Item" ADD COLUMN IF NOT EXISTS "shotPrice" DECIMAL(12,2);

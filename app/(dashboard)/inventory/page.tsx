@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useItems, useSetItemActive } from "@/lib/hooks/useItems";
+import { useItems, useSetItemActive, useUpdatePhysicalCheck } from "@/lib/hooks/useItems";
 import { useSetting } from "@/lib/hooks/useInventory";
 import { useSession } from "@/lib/auth/session";
 import { PageHeader } from "@/components/shared/page-header";
@@ -17,7 +17,7 @@ import {
   TableSkeleton,
 } from "@/components/ui/primitives";
 import { ActiveBadge, StockStatusBadge } from "@/components/shared/status";
-import { IconBox, IconEdit, IconPlus, IconSort, IconTrend } from "@/components/ui/icons";
+import { IconBox, IconCheck, IconEdit, IconPlus, IconSort, IconTrend } from "@/components/ui/icons";
 import { formatMoney, stockStatus } from "@/lib/utils";
 import type { Item } from "@/lib/types";
 
@@ -31,18 +31,27 @@ export default function InventoryPage() {
   const { data: items, isLoading, isError, error, refetch } = useItems();
   const { data: setting } = useSetting();
   const setActive = useSetItemActive();
+  const updatePhysicalCheck = useUpdatePhysicalCheck();
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("name");
   const [dir, setDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
 
+  const [physicalDrafts, setPhysicalDrafts] = useState<Record<string, string>>({});
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Item | null>(null);
   const [toggleTarget, setToggleTarget] = useState<Item | null>(null);
   const [historyItem, setHistoryItem] = useState<Item | null>(null);
 
   const threshold = setting?.lowStockThreshold ?? 10;
+
+  async function handleSavePhysicalCheck(itemId: string, val: string) {
+    const trimmed = val.trim();
+    const num = trimmed === "" ? null : Number(trimmed);
+    if (num !== null && (isNaN(num) || num < 0)) return;
+    await updatePhysicalCheck.mutateAsync({ id: itemId, physicalCount: num });
+  }
 
   const filtered = useMemo(() => {
     if (!items) return [];
@@ -124,7 +133,7 @@ export default function InventoryPage() {
         </div>
 
         {isLoading ? (
-          <TableSkeleton cols={isAdmin ? 8 : 7} rows={PAGE_SIZE} />
+          <TableSkeleton cols={isAdmin ? 9 : 8} rows={PAGE_SIZE} />
         ) : isError ? (
           <ErrorBlock message={error?.message ?? "Failed to load"} onRetry={refetch} />
         ) : filtered.length === 0 ? (
@@ -153,53 +162,162 @@ export default function InventoryPage() {
                     <Th onClick={() => toggleSort("price")} active={sort === "price"}>Price</Th>
                     <Th onClick={() => toggleSort("stock")} active={sort === "stock"}>Warehouse</Th>
                     <th scope="col" className="px-4 py-3 text-right">Counter Bar</th>
+                    <th scope="col" className="px-4 py-3 text-center">Physical Check</th>
                     <th scope="col" className="px-4 py-3">Warehouse Status</th>
                     <th scope="col" className="px-4 py-3">Catalog Status</th>
                     {isAdmin && <th scope="col" className="px-4 py-3 text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {pageItems.map((item) => (
-                    <tr key={item.id} className="transition-colors hover:bg-slate-50/60">
-                      <td className="px-4 py-3 font-semibold text-slate-900">{item.name}</td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 border border-slate-200/60">
-                          {item.category || "Other"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 tabular-nums font-semibold text-slate-900">{formatMoney(item.price)}</td>
-                      <td className="px-4 py-3 tabular-nums font-bold text-slate-900">{item.stock}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-600 font-medium">{item.counterStock}</td>
-                      <td className="px-4 py-3"><StockStatusBadge status={stockStatus(item, threshold)} /></td>
-                      <td className="px-4 py-3"><ActiveBadge active={item.isActive} /></td>
-                      {isAdmin && (
+                  {pageItems.map((item) => {
+                    const draftVal = physicalDrafts[item.id];
+                    const currentPhysical = draftVal !== undefined ? draftVal : (item.physicalCount !== null && item.physicalCount !== undefined ? String(item.physicalCount) : "");
+                    const isPortioned = (item.shotsPerUnit ?? 1) > 1;
+
+                    return (
+                      <tr key={item.id} className="transition-colors hover:bg-slate-50/60">
                         <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setHistoryItem(item)}
-                              aria-label={`View price history for ${item.name}`}
-                              title="Price history"
-                            >
-                              <IconTrend size={14} />
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => openEdit(item)}>
-                              <IconEdit size={14} />
-                              Edit
-                            </Button>
-                            <Button
-                              variant={item.isActive ? "ghost" : "secondary"}
-                              size="sm"
-                              onClick={() => setToggleTarget(item)}
-                            >
-                              {item.isActive ? "Deactivate" : "Activate"}
-                            </Button>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-900">{item.name}</span>
+                            {isPortioned && (
+                              <span
+                                className="inline-flex items-center rounded-md border border-teal-200/80 bg-teal-50 px-1.5 py-0.5 text-[10px] font-bold text-teal-800"
+                                title={`Portioned item: 1 bulk bottle = ${item.shotsPerUnit} shots`}
+                              >
+                                1 btl = {item.shotsPerUnit} shots
+                              </span>
+                            )}
                           </div>
                         </td>
-                      )}
-                    </tr>
-                  ))}
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 border border-slate-200/60">
+                            {item.category || "Other"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 tabular-nums text-slate-900">
+                          {isPortioned ? (
+                            <div>
+                              <span className="font-bold text-slate-900">
+                                {formatMoney(item.shotPrice ?? (item.price / item.shotsPerUnit))}
+                              </span>
+                              <span className="text-[10px] text-teal-700 font-semibold ml-0.5">/shot</span>
+                              <div className="text-[11px] text-slate-400 font-normal">
+                                {formatMoney(item.price)} /btl
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="font-semibold text-slate-900">{formatMoney(item.price)}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 tabular-nums font-bold text-slate-900">
+                          {item.stock}
+                          {isPortioned && <span className="text-xs text-slate-400 font-normal ml-1">btl</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-slate-700 font-medium">
+                          {item.counterStock}
+                          {isPortioned && <span className="text-xs text-teal-700 font-semibold ml-1">shots</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          {isAdmin ? (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                className="w-16 rounded-md border border-slate-300 bg-white px-2 py-1 text-center text-xs font-bold text-slate-900 tabular-nums focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                                placeholder={item.physicalCount !== null && item.physicalCount !== undefined ? String(item.physicalCount) : "Count"}
+                                value={currentPhysical}
+                                onChange={(e) => setPhysicalDrafts((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleSavePhysicalCheck(item.id, currentPhysical);
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSavePhysicalCheck(item.id, currentPhysical)}
+                                disabled={updatePhysicalCheck.isPending}
+                                title="Save physical check count"
+                                className="rounded p-1 text-slate-400 hover:bg-teal-50 hover:text-teal-700 transition-colors"
+                              >
+                                <IconCheck size={14} />
+                              </button>
+                              {(() => {
+                                if (!currentPhysical && currentPhysical !== "0") return null;
+                                const pNum = Number(currentPhysical);
+                                if (isNaN(pNum)) return null;
+                                const target = isPortioned ? item.stock : item.stock + item.counterStock;
+                                const variance = pNum - target;
+                                if (variance === 0) {
+                                  return (
+                                    <span
+                                      className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200"
+                                      title="Physical count matches system stock"
+                                    >
+                                      ✓ Match
+                                    </span>
+                                  );
+                                }
+                                if (variance < 0) {
+                                  return (
+                                    <span
+                                      className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200"
+                                      title={`Shortage: physical count is ${Math.abs(variance)} below system`}
+                                    >
+                                      {variance}
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span
+                                    className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200"
+                                    title={`Surplus: physical count is ${variance} above system`}
+                                  >
+                                    +{variance}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          ) : (
+                            <div className="text-center tabular-nums text-xs text-slate-600 font-medium">
+                              {item.physicalCount !== null && item.physicalCount !== undefined ? (
+                                <span className="font-semibold text-slate-800">{item.physicalCount}</span>
+                              ) : (
+                                "—"
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3"><StockStatusBadge status={stockStatus(item, threshold)} /></td>
+                        <td className="px-4 py-3"><ActiveBadge active={item.isActive} /></td>
+                        {isAdmin && (
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setHistoryItem(item)}
+                                aria-label={`View price history for ${item.name}`}
+                                title="Price history"
+                              >
+                                <IconTrend size={14} />
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => openEdit(item)}>
+                                <IconEdit size={14} />
+                                Edit
+                              </Button>
+                              <Button
+                                variant={item.isActive ? "ghost" : "secondary"}
+                                size="sm"
+                                onClick={() => setToggleTarget(item)}
+                              >
+                                {item.isActive ? "Deactivate" : "Activate"}
+                              </Button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

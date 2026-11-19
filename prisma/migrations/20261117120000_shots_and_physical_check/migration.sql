@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Item" ADD COLUMN "shotsPerUnit" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE "Item" ADD COLUMN "physicalCount" INTEGER;
+ALTER TABLE "Item" ADD COLUMN "lastPhysicalCheckAt" TIMESTAMP(3);

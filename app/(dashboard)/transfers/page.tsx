@@ -129,8 +129,29 @@ export default function TransfersPage() {
                     <td className="whitespace-nowrap px-4 py-3 tabular-nums text-xs text-slate-500">
                       {formatDateTime(t.createdAt)}
                     </td>
-                    <td className="px-4 py-3 font-semibold text-slate-900">{t.itemName}</td>
-                    <td className="px-4 py-3 text-right tabular-nums font-bold text-slate-900">{t.quantity}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-900">{t.itemName}</span>
+                        {t.shotsPerUnit && t.shotsPerUnit > 1 ? (
+                          <span className="inline-flex items-center rounded-md border border-teal-200/80 bg-teal-50 px-1.5 py-0.5 text-[10px] font-bold text-teal-800">
+                            1 btl = {t.shotsPerUnit} shots
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums font-bold text-slate-900">
+                      <div>
+                        {t.quantity}
+                        {t.shotsPerUnit && t.shotsPerUnit > 1 ? (
+                          <span className="text-xs font-normal text-slate-500 ml-1">btl</span>
+                        ) : null}
+                      </div>
+                      {t.shotsPerUnit && t.shotsPerUnit > 1 ? (
+                        <div className="text-[11px] font-semibold text-teal-700">
+                          +{t.quantity * t.shotsPerUnit} shots to bar
+                        </div>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3 text-slate-600 font-medium">{t.requestedBy}</td>
                     <td className="px-4 py-3"><TransferStatusBadge status={t.status} /></td>
                     <td className="max-w-[14rem] truncate px-4 py-3 text-xs text-slate-500" title={t.note ?? ""}>

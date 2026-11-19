@@ -23,6 +23,16 @@ interface Line {
   quantity: number;
 }
 
+function getItemSellingPrice(item: Item): number {
+  if ((item.shotsPerUnit ?? 1) > 1) {
+    if (item.shotPrice !== null && item.shotPrice !== undefined && item.shotPrice > 0) {
+      return item.shotPrice;
+    }
+    return Math.round((item.price / item.shotsPerUnit + Number.EPSILON) * 100) / 100;
+  }
+  return item.price;
+}
+
 export default function NewOrderPage() {
   const { user } = useSession();
   const isBarman = user?.role === "BARMAN";
@@ -65,7 +75,7 @@ export default function NewOrderPage() {
   }, [items, search, selectedCategory]);
 
   const lines = Object.values(cart);
-  const total = lines.reduce((s, l) => s + l.item.price * l.quantity, 0);
+  const total = lines.reduce((s, l) => s + getItemSellingPrice(l.item) * l.quantity, 0);
   const itemCount = lines.reduce((s, l) => s + l.quantity, 0);
 
   const selectedWaiterName = waiterId
@@ -205,7 +215,7 @@ export default function NewOrderPage() {
                     key={item.id}
                     disabled={!available || atMax}
                     onClick={() => addToCart(item)}
-                    aria-label={`Add ${item.name} (${formatMoney(item.price)}, ${item.counterStock} available)`}
+                    aria-label={`Add ${item.name} (${formatMoney(getItemSellingPrice(item))}, ${item.counterStock} available)`}
                     className={cn(
                       "group relative flex min-h-[110px] flex-col justify-between rounded-xl border p-3.5 text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] active:scale-[0.98]",
                       available
@@ -230,7 +240,10 @@ export default function NewOrderPage() {
                     {/* Middle Row: Price */}
                     <div className="mt-1">
                       <span className="text-base font-bold tabular-nums text-slate-900">
-                        {formatMoney(item.price)}
+                        {formatMoney(getItemSellingPrice(item))}
+                        {(item.shotsPerUnit ?? 1) > 1 && (
+                          <span className="text-[11px] font-normal text-slate-500 ml-0.5">/shot</span>
+                        )}
                       </span>
                     </div>
 
@@ -245,7 +258,7 @@ export default function NewOrderPage() {
                               : "bg-emerald-50 text-emerald-800 border border-emerald-200",
                           )}
                         >
-                          {item.counterStock} at bar
+                          {item.counterStock} {(item.shotsPerUnit ?? 1) > 1 ? "shots" : "at bar"}
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-800 border border-rose-200">
@@ -402,9 +415,14 @@ export default function NewOrderPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-slate-900">
                         {l.item.name}
+                        {(l.item.shotsPerUnit ?? 1) > 1 && (
+                          <span className="text-[10px] text-teal-800 font-bold ml-1 bg-teal-50 px-1 py-0.5 rounded border border-teal-200">
+                            shot
+                          </span>
+                        )}
                       </p>
                       <p className="text-xs tabular-nums text-slate-500">
-                        {formatMoney(l.item.price)} each
+                        {formatMoney(getItemSellingPrice(l.item))} {(l.item.shotsPerUnit ?? 1) > 1 ? "/shot" : "each"}
                       </p>
                     </div>
 
@@ -433,7 +451,7 @@ export default function NewOrderPage() {
                     </div>
 
                     <span className="w-16 text-right text-sm font-bold tabular-nums text-slate-900">
-                      {formatMoney(l.item.price * l.quantity)}
+                      {formatMoney(getItemSellingPrice(l.item) * l.quantity)}
                     </span>
 
                     <button

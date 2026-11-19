@@ -14,6 +14,8 @@ export const itemService = {
     http.put<Item>(`/items/${id}`, dto),
   setActive: (id: string, isActive: boolean): Promise<Item> =>
     http.patch<Item>(`/items/${id}/status`, { isActive }),
+  updatePhysicalCheck: (id: string, physicalCount: number | null): Promise<Item> =>
+    http.patch<Item>(`/items/${id}/physical-check`, { physicalCount }),
   getPriceHistory: (id: string): Promise<PriceHistoryEntry[]> =>
     http.get<PriceHistoryEntry[]>(`/items/${id}/price-history`),
 };

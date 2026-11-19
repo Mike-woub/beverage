@@ -71,6 +71,14 @@ model Item {
   // COUNTER/BAR stock — what the barman sells from; orders deduct from here.
   // Replenished only by an admin-approved transfer. must be >= 0 (DB CHECK).
   counterStock Int   @default(0)
+  // Portions/shots per warehouse bulk unit (e.g., 78 shots per bottle of whiskey; 1 for 1:1 items).
+  // When 1 bulk unit is transferred from warehouse, counterStock increases by shotsPerUnit.
+  shotsPerUnit Int   @default(1)
+  // Selling price per shot/portion at the counter when sold as portions (e.g. 100 ETB per shot).
+  shotPrice    Decimal? @db.Decimal(12, 2)
+  // Physical inventory check: last physically counted quantity recorded by admin.
+  physicalCount Int?
+  lastPhysicalCheckAt DateTime?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

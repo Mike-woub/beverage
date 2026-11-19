@@ -216,9 +216,17 @@ export const orderService = {
       // deadlocks between concurrent orders. Raw SQL — Prisma has no FOR UPDATE.
       // Orders sell from the COUNTER pool (counterStock), not the warehouse.
       const locked = await tx.$queryRaw<
-        Array<{ id: string; name: string; price: Prisma.Decimal; counterStock: number; isActive: boolean }>
+        Array<{
+          id: string;
+          name: string;
+          price: Prisma.Decimal;
+          shotsPerUnit: number;
+          shotPrice: Prisma.Decimal | null;
+          counterStock: number;
+          isActive: boolean;
+        }>
       >`
-        SELECT "id", "name", "price", "counterStock", "isActive"
+        SELECT "id", "name", "price", "shotsPerUnit", "shotPrice", "counterStock", "isActive"
         FROM "Item"
         WHERE "id" IN (${Prisma.join(itemIds)})
         ORDER BY "id"
@@ -253,7 +261,9 @@ export const orderService = {
 
       for (const [itemId, quantity] of merged) {
         const row = byId.get(itemId)!;
-        const unitPrice = row.price;
+        // When selling per shot at counter, take shotPrice if configured, not the bulk bottle price!
+        const isPortioned = (row.shotsPerUnit ?? 1) > 1;
+        const unitPrice = isPortioned && row.shotPrice ? row.shotPrice : row.price;
         const subtotal = round2(unitPrice.mul(quantity));
         total = total.add(subtotal);
 
@@ -561,27 +571,90 @@ export const orderService = {
     };
   },
 
-  /** Admin revenue report: total sales per Addis-Ababa day, most recent first. */
+  /** Admin revenue & profitability report: total sales, COGS, and gross profit per Addis-Ababa day. */
   async dailyRevenue(days = 30) {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    const orders = await prisma.order.findMany({
-      where: { createdAt: { gte: since }, isVoided: false },
-      select: { createdAt: true, totalAmount: true },
-    });
-    const byDay = new Map<string, { revenue: number; orderCount: number }>();
+
+    const [orders, allItems] = await Promise.all([
+      prisma.order.findMany({
+        where: { createdAt: { gte: since }, isVoided: false },
+        include: {
+          orderItems: {
+            select: { itemId: true, quantity: true, subtotal: true },
+          },
+        },
+      }),
+      prisma.item.findMany({
+        select: {
+          id: true,
+          price: true,
+          shotsPerUnit: true,
+          stockReceipts: {
+            orderBy: { createdAt: "desc" },
+            select: { unitCost: true, quantity: true },
+          },
+        },
+      }),
+    ]);
+
+    // Build cost lookup per sold portion/unit
+    const unitCostMap = new Map<string, number>();
+    for (const item of allItems) {
+      let bulkCost: number;
+      if (item.stockReceipts.length > 0) {
+        // Weighted average cost from actual purchase receipts
+        const totalQty = item.stockReceipts.reduce((sum, r) => sum + r.quantity, 0);
+        const totalExpenditure = item.stockReceipts.reduce(
+          (sum, r) => sum + r.quantity * Number(r.unitCost),
+          0,
+        );
+        bulkCost = totalQty > 0 ? totalExpenditure / totalQty : Number(item.stockReceipts[0].unitCost);
+      } else {
+        // Fallback for items before receipt registration: 60% of selling price
+        bulkCost = Number(item.price) * 0.6;
+      }
+      const shots = Math.max(1, item.shotsPerUnit ?? 1);
+      unitCostMap.set(item.id, bulkCost / shots);
+    }
+
+    const byDay = new Map<
+      string,
+      { revenue: number; cost: number; orderCount: number }
+    >();
+
     for (const o of orders) {
       const key = addisDayKey(o.createdAt);
-      const cur = byDay.get(key) ?? { revenue: 0, orderCount: 0 };
+      const cur = byDay.get(key) ?? { revenue: 0, cost: 0, orderCount: 0 };
       cur.revenue += Number(o.totalAmount);
       cur.orderCount += 1;
+
+      for (const oi of o.orderItems) {
+        const itemPortionCost = unitCostMap.get(oi.itemId) ?? 0;
+        cur.cost += oi.quantity * itemPortionCost;
+      }
+
       byDay.set(key, cur);
     }
+
     return [...byDay.entries()]
-      .map(([day, v]) => ({
-        day,
-        revenue: Math.round((v.revenue + Number.EPSILON) * 100) / 100,
-        orderCount: v.orderCount,
-      }))
+      .map(([day, v]) => {
+        const roundedRevenue = Math.round((v.revenue + Number.EPSILON) * 100) / 100;
+        const roundedCost = Math.round((v.cost + Number.EPSILON) * 100) / 100;
+        const profit = Math.round((roundedRevenue - roundedCost + Number.EPSILON) * 100) / 100;
+        const profitMargin =
+          roundedRevenue > 0
+            ? Math.round(((profit / roundedRevenue) * 100 + Number.EPSILON) * 10) / 10
+            : 0;
+
+        return {
+          day,
+          revenue: roundedRevenue,
+          cost: roundedCost,
+          profit,
+          profitMargin,
+          orderCount: v.orderCount,
+        };
+      })
       .sort((a, b) => (a.day < b.day ? 1 : -1));
   },
 

@@ -43,18 +43,39 @@ export function RequestTransferModal({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const parsed = schema.safeParse({ itemId, quantity: Number(quantity) });
+    const qtyNum = Number(quantity);
+    const parsed = schema.safeParse({ itemId, quantity: qtyNum });
     if (!parsed.success) {
       const next: Record<string, string> = {};
       for (const issue of parsed.error.issues) next[String(issue.path[0])] = issue.message;
       setErrors(next);
       return;
     }
+
+    if (!selected) {
+      setErrors({ itemId: "Select a beverage" });
+      return;
+    }
+
+    if (selected.stock <= 0) {
+      setErrors({
+        quantity: `No warehouse stock available for "${selected.name}" (0 in warehouse). Stock must be received first.`,
+      });
+      return;
+    }
+
+    if (qtyNum > selected.stock) {
+      setErrors({
+        quantity: `Cannot request ${qtyNum} unit(s). Only ${selected.stock} available in warehouse.`,
+      });
+      return;
+    }
+
     setErrors({});
     try {
       await createTransfer.mutateAsync({
         itemId,
-        quantity: Number(quantity),
+        quantity: qtyNum,
         note: note.trim() || undefined,
       });
       onClose();
@@ -62,6 +83,8 @@ export function RequestTransferModal({
       /* toast handled in hook */
     }
   }
+
+  const isWarehouseEmpty = selected ? selected.stock <= 0 : false;
 
   return (
     <Modal
@@ -74,13 +97,24 @@ export function RequestTransferModal({
           <Button variant="ghost" onClick={onClose} disabled={createTransfer.isPending}>
             Cancel
           </Button>
-          <Button type="submit" form="transfer-form" loading={createTransfer.isPending}>
+          <Button
+            type="submit"
+            form="transfer-form"
+            loading={createTransfer.isPending}
+            disabled={isWarehouseEmpty}
+          >
             Send transfer request
           </Button>
         </>
       }
     >
       <form id="transfer-form" onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+        {isWarehouseEmpty && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3 text-xs font-semibold text-rose-800">
+            ⚠️ Warehouse has 0 units of {selected?.name}. You cannot request a transfer until new stock is received into the warehouse.
+          </div>
+        )}
+
         <Field label="Beverage" htmlFor="t-item" error={errors.itemId}>
           <Select id="t-item" value={itemId} onChange={(e) => setItemId(e.target.value)}>
             <option value="">Select a beverage…</option>
@@ -88,18 +122,36 @@ export function RequestTransferModal({
               .filter((i) => i.isActive)
               .map((i) => (
                 <option key={i.id} value={i.id}>
-                  {i.name} — warehouse {i.stock}, counter {i.counterStock}
+                  {i.name} — warehouse {i.stock}{i.shotsPerUnit > 1 ? " btl" : ""}{i.stock <= 0 ? " (Empty)" : ""}, counter {i.counterStock}{i.shotsPerUnit > 1 ? ` shots (${i.shotsPerUnit} shots/btl)` : ""}
                 </option>
               ))}
           </Select>
         </Field>
         <Field
-          label="Quantity to move"
+          label={selected && selected.shotsPerUnit > 1 ? "Bottles to pull from warehouse" : "Quantity to move"}
           htmlFor="t-qty"
           error={errors.quantity}
-          hint={selected ? `Warehouse has ${selected.stock} available.` : undefined}
+          hint={
+            selected
+              ? selected.stock <= 0
+                ? "Warehouse is completely empty (0 units)."
+                : selected.shotsPerUnit > 1
+                ? `Warehouse has ${selected.stock} bottle(s) available. Moving ${quantity || 1} bottle(s) will replenish counter with ${(Number(quantity) || 1) * selected.shotsPerUnit} shots.`
+                : `Warehouse has ${selected.stock} available (max: ${selected.stock}).`
+              : undefined
+          }
         >
-          <Input id="t-qty" type="number" min="1" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="0" />
+          <Input
+            id="t-qty"
+            type="number"
+            min="1"
+            max={selected ? Math.max(1, selected.stock) : undefined}
+            step="1"
+            disabled={isWarehouseEmpty}
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            placeholder={isWarehouseEmpty ? "0 available" : "1"}
+          />
         </Field>
         <Field label="Note (optional)" htmlFor="t-note">
           <Textarea id="t-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. running low for the evening rush" />

@@ -22,7 +22,7 @@ function serialize(r: {
   note: string | null;
   createdAt: Date;
   decidedAt: Date | null;
-  item: { name: string };
+  item: { name: string; shotsPerUnit?: number };
   requestedByUser: { username: string };
   decidedByUser: { username: string } | null;
 }) {
@@ -30,6 +30,7 @@ function serialize(r: {
     id: r.id,
     itemId: r.itemId,
     itemName: r.item.name,
+    shotsPerUnit: r.item.shotsPerUnit ?? 1,
     quantity: r.quantity,
     status: r.status as "PENDING" | "APPROVED" | "REJECTED",
     note: r.note,
@@ -41,7 +42,7 @@ function serialize(r: {
 }
 
 const INCLUDE = {
-  item: { select: { name: true } },
+  item: { select: { name: true, shotsPerUnit: true } },
   requestedByUser: { select: { username: true } },
   decidedByUser: { select: { username: true } },
 } as const;
@@ -61,6 +62,20 @@ export const transferService = {
     const item = await prisma.item.findUnique({ where: { id: input.itemId } });
     if (!item) throw new ApiException("Beverage not found", 404);
     if (input.quantity <= 0) throw new ApiException("Quantity must be greater than zero", 422);
+
+    if (item.stock <= 0) {
+      throw new ApiException(
+        `Cannot request transfer for "${item.name}". No stock is available in the warehouse (0 units in stock).`,
+        400,
+      );
+    }
+
+    if (input.quantity > item.stock) {
+      throw new ApiException(
+        `Cannot request ${input.quantity} unit(s) of "${item.name}". Only ${item.stock} unit(s) available in the warehouse.`,
+        400,
+      );
+    }
 
     const created = await prisma.transferRequest.create({
       data: {
@@ -93,8 +108,10 @@ export const transferService = {
       }
 
       // Lock the item and verify warehouse has enough.
-      const itemRows = await tx.$queryRaw<Array<{ id: string; name: string; stock: number }>>`
-        SELECT "id", "name", "stock" FROM "Item" WHERE "id" = ${reqRow.itemId} FOR UPDATE
+      const itemRows = await tx.$queryRaw<
+        Array<{ id: string; name: string; stock: number; shotsPerUnit: number }>
+      >`
+        SELECT "id", "name", "stock", "shotsPerUnit" FROM "Item" WHERE "id" = ${reqRow.itemId} FOR UPDATE
       `;
       const item = itemRows[0];
       if (!item) throw new ApiException("Beverage not found", 404);
@@ -105,11 +122,16 @@ export const transferService = {
         );
       }
 
-      // Move: warehouse down, counter up (atomic, guarded).
+      // Requirement 3: Portion/shot conversion
+      // When 1 bulk unit is deducted from warehouse, counter receives shotsPerUnit.
+      const multiplier = Math.max(1, item.shotsPerUnit ?? 1);
+      const counterIncrement = reqRow.quantity * multiplier;
+
+      // Move: warehouse down by bulk quantity, counter up by shots quantity (atomic, guarded).
       const moved = await tx.$executeRaw`
         UPDATE "Item"
         SET "stock" = "stock" - ${reqRow.quantity},
-            "counterStock" = "counterStock" + ${reqRow.quantity},
+            "counterStock" = "counterStock" + ${counterIncrement},
             "updatedAt" = NOW()
         WHERE "id" = ${reqRow.itemId} AND "stock" >= ${reqRow.quantity}
       `;
@@ -117,14 +139,17 @@ export const transferService = {
         throw new ApiException(`Not enough warehouse stock for "${item.name}"`, 409);
       }
 
-      // Audit: one movement out of the warehouse, one into the counter.
+      // Audit: one movement out of the warehouse (bulk units), one into the counter (shots units).
       await tx.stockMovement.create({
         data: {
           itemId: reqRow.itemId,
           userId: user.id,
           movementType: "TRANSFER_OUT",
           quantity: reqRow.quantity,
-          description: `Transfer to counter (request ${reqRow.id})`,
+          description:
+            multiplier > 1
+              ? `Transfer to counter: ${reqRow.quantity} bulk unit(s) (${counterIncrement} shots, request ${reqRow.id})`
+              : `Transfer to counter (request ${reqRow.id})`,
         },
       });
       await tx.stockMovement.create({
@@ -132,8 +157,11 @@ export const transferService = {
           itemId: reqRow.itemId,
           userId: user.id,
           movementType: "TRANSFER_IN",
-          quantity: reqRow.quantity,
-          description: `Transfer from warehouse (request ${reqRow.id})`,
+          quantity: counterIncrement,
+          description:
+            multiplier > 1
+              ? `Transfer from warehouse: ${counterIncrement} shots from ${reqRow.quantity} bulk unit(s) (request ${reqRow.id})`
+              : `Transfer from warehouse (request ${reqRow.id})`,
         },
       });
 

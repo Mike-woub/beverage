@@ -16,12 +16,22 @@ export const createItemSchema = z.object({
   category: z.string().min(1).max(50).optional(),
   price: z.number().nonnegative("Price cannot be negative"),
   stock: z.number().int("Stock must be a whole number").nonnegative("Stock cannot be negative"),
+  costPrice: z.number().nonnegative("Cost price cannot be negative").optional(),
+  shotsPerUnit: z.number().int("Shots per unit must be a whole number").positive("Shots per unit must be at least 1").default(1).optional(),
+  shotPrice: z.number().nonnegative("Shot price cannot be negative").optional(),
 });
 
 export const updateItemSchema = z.object({
   name: z.string().min(1).max(80).optional(),
   category: z.string().min(1).max(50).optional(),
   price: z.number().nonnegative("Price cannot be negative").optional(),
+  shotsPerUnit: z.number().int().positive().optional(),
+  shotPrice: z.number().nonnegative("Shot price cannot be negative").nullable().optional(),
+  physicalCount: z.number().int().nonnegative().nullable().optional(),
+});
+
+export const physicalCheckSchema = z.object({
+  physicalCount: z.number().int("Must be a whole number").nonnegative("Cannot be negative").nullable(),
 });
 
 export const voidOrderSchema = z.object({

@@ -48,6 +48,10 @@ export interface Item {
   price: number;
   stock: number; // warehouse
   counterStock: number; // bar/counter — what orders sell from
+  shotsPerUnit: number; // portions/shots per bulk unit (default 1)
+  shotPrice?: number | null; // selling price per shot at counter
+  physicalCount?: number | null; // last physically checked count
+  lastPhysicalCheckAt?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -57,6 +61,7 @@ export interface TransferRequest {
   id: string;
   itemId: string;
   itemName: string;
+  shotsPerUnit?: number;
   quantity: number;
   status: TransferStatus;
   note?: string | null;
@@ -143,11 +148,17 @@ export interface CreateItemDTO {
   category?: string;
   price: number;
   stock: number;
+  costPrice?: number;
+  shotsPerUnit?: number;
+  shotPrice?: number;
 }
 export interface UpdateItemDTO {
   name?: string;
   category?: string;
   price?: number;
+  shotsPerUnit?: number;
+  shotPrice?: number | null;
+  physicalCount?: number | null;
 }
 
 export interface VoidOrderDTO {
@@ -268,6 +279,9 @@ export interface WaiterSalesDetail {
 export interface DailyRevenue {
   day: string; // YYYY-MM-DD (Africa/Addis_Ababa)
   revenue: number;
+  cost: number;
+  profit: number;
+  profitMargin: number;
   orderCount: number;
 }
 

@@ -50,3 +50,13 @@ export function useSetItemActive() {
     onError: (e) => toast.error(e.message),
   });
 }
+
+export function useUpdatePhysicalCheck() {
+  const toast = useToast();
+  return useMutation<Item, { id: string; physicalCount: number | null }>({
+    mutationFn: ({ id, physicalCount }) => itemService.updatePhysicalCheck(id, physicalCount),
+    invalidateKeys: [KEY],
+    onSuccess: (item) => toast.success(`Recorded physical count for "${item.name}"`),
+    onError: (e) => toast.error(e.message),
+  });
+}

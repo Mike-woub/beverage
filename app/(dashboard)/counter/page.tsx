@@ -106,29 +106,63 @@ export default function CounterPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {filtered.map((item) => (
-                  <tr key={item.id} className="transition-colors hover:bg-slate-50/60">
-                    <td className="px-4 py-3 font-semibold text-slate-900">{item.name}</td>
-                    <td className="px-4 py-3 tabular-nums font-medium text-slate-700">{formatMoney(item.price)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums font-bold text-slate-900">{item.counterStock}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-slate-500 font-medium">{item.stock}</td>
-                    <td className="px-4 py-3">
-                      <StockStatusBadge
-                        status={stockStatus({ ...item, stock: item.counterStock }, threshold)}
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => requestFor(item.id)}
-                        aria-label={`Request stock transfer for ${item.name}`}
-                      >
-                        Request pull
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((item) => {
+                  const isPortioned = (item.shotsPerUnit ?? 1) > 1;
+                  return (
+                    <tr key={item.id} className="transition-colors hover:bg-slate-50/60">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-slate-900">{item.name}</span>
+                          {isPortioned && (
+                            <span className="inline-flex items-center rounded-md border border-teal-200/80 bg-teal-50 px-1.5 py-0.5 text-[10px] font-bold text-teal-800">
+                              1 btl = {item.shotsPerUnit} shots
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 tabular-nums text-slate-700">
+                        {isPortioned ? (
+                          <div>
+                            <span className="font-bold text-slate-900">
+                              {formatMoney(item.shotPrice ?? (item.price / item.shotsPerUnit))}
+                            </span>
+                            <span className="text-[10px] text-teal-700 font-semibold ml-0.5">/shot</span>
+                            <div className="text-[11px] text-slate-400 font-normal">
+                              {formatMoney(item.price)} /btl
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="font-medium text-slate-700">{formatMoney(item.price)}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-900 font-bold">
+                        {item.counterStock}
+                        {isPortioned && <span className="text-xs text-teal-700 font-semibold ml-1">shots</span>}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-500 font-medium">
+                        {item.stock}
+                        {isPortioned && <span className="text-xs text-slate-400 font-normal ml-1">btl</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StockStatusBadge
+                          status={stockStatus({ ...item, stock: item.counterStock }, threshold)}
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button
+                          variant={item.stock <= 0 ? "ghost" : "outline"}
+                          size="sm"
+                          disabled={item.stock <= 0}
+                          onClick={() => requestFor(item.id)}
+                          aria-label={`Request stock transfer for ${item.name}`}
+                          className={item.stock <= 0 ? "text-slate-400 cursor-not-allowed" : ""}
+                        >
+                          {item.stock <= 0 ? "Warehouse empty" : "Request pull"}
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
